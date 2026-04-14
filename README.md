@@ -1,5 +1,7 @@
 # VoxelKit
 
+![VoxelKit banner](assets/voxelkit_github_banner.svg)
+
 Lightweight FastAPI utility for inspecting, previewing, and slicing multidimensional imaging data (NIfTI and HDF5).
 
 ## Motivation
@@ -108,12 +110,7 @@ This creates:
 
 ## Contributing
 
-Contributions are welcome.
-
-1. Fork the repo and create a feature branch.
-2. Keep changes small and focused.
-3. Add or update tests when behavior changes.
-4. Open a PR with a clear summary and rationale.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow, coding standards, and pull request guidance.
 
 ## Disclaimer
 
