@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+nibabel
+h5py
+Pillow
+python-multipart
