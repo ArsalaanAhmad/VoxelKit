@@ -2,7 +2,14 @@
 
 ![VoxelKit banner](assets/voxelkit_github_banner.svg)
 
-Lightweight FastAPI utility for inspecting, previewing, and slicing multidimensional imaging data (NIfTI and HDF5).
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-thin%20wrapper-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Formats](https://img.shields.io/badge/formats-HDF5%20%7C%20NIfTI-5A67D8)](#features)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active-2EA44F)](#roadmap)
+
+Library-first toolkit for inspecting and previewing multidimensional imaging data.
+The FastAPI app in `app/` is intentionally a thin HTTP wrapper around the reusable Python library in `voxelkit/`.
 
 ## Motivation
 
@@ -10,60 +17,79 @@ VoxelKit removes repetitive one-off scripts for inspecting and previewing imagin
 
 ## Features
 
-- NIfTI metadata inspection via `POST /nifti/metadata`
-- NIfTI slice preview (PNG) via `POST /nifti/preview`
-- HDF5 recursive structure inspection via `POST /h5/inspect`
-- HDF5 dataset slice preview (PNG) via `POST /h5/slice`
+- HDF5 recursive structure inspection
+- HDF5 dataset slice preview (PNG)
+- NIfTI metadata extraction
+- NIfTI preview slice generation (PNG)
+- Direct Python usage through `voxelkit/` modules
+- HTTP usage through FastAPI endpoints
 
-## Quickstart
-
-### 1) Install dependencies
+## Installation
 
 ```powershell
-cd neuroprep-api
+cd VoxelKit
 pip install -r requirements.txt
 ```
 
-### 2) Run the API
+## Quickstart
 
-In this environment, the reliable command is:
+### 1) Use As A Python Library
+
+```python
+from voxelkit.h5 import inspect_h5, preview_h5
+from voxelkit.nifti import nifti_metadata, preview_nifti
+
+h5_info = inspect_h5("tests/fixtures/sample_nested.h5")
+nifti_info = nifti_metadata("tests/fixtures/sample_3d.nii.gz")
+
+h5_png = preview_h5(
+	file_path="tests/fixtures/sample_nested.h5",
+	dataset_path="data/subject01/run1/bold",
+	axis=2,
+	slice_index=3,
+)
+
+nifti_png = preview_nifti(
+	file_path="tests/fixtures/sample_3d.nii.gz",
+	plane="axial",
+	slice_index=4,
+)
+
+with open("h5_preview.png", "wb") as f:
+	f.write(h5_png)
+
+with open("nifti_preview.png", "wb") as f:
+	f.write(nifti_png)
+```
+
+### 2) Run The API
 
 ```powershell
 py -m uvicorn app.main:app --reload
 ```
 
-### 3) Open API docs
+### 3) Open API Docs
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-## Usage
+## API Endpoints
 
-### Health
+- `POST /h5/inspect`
+- `POST /h5/slice`
+- `POST /nifti/metadata`
+- `POST /nifti/preview`
+- `GET /health`
 
-```bash
-curl -X GET "http://127.0.0.1:8000/health"
-```
+## API Usage Examples
 
-### NIfTI metadata
+### NIfTI Metadata
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/nifti/metadata" \
 	-F "file=@tests/fixtures/sample_3d.nii.gz"
 ```
 
-Example response:
-
-```json
-{
-	"filename": "sample_3d.nii.gz",
-	"shape": [8, 9, 10],
-	"ndim": 3,
-	"voxel_size": [1.0, 1.0, 1.0],
-	"dtype": "float32"
-}
-```
-
-### NIfTI preview
+### NIfTI Preview
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/nifti/preview?plane=axial&slice_index=4" \
@@ -71,19 +97,31 @@ curl -X POST "http://127.0.0.1:8000/nifti/preview?plane=axial&slice_index=4" \
 	--output nifti_preview.png
 ```
 
-### HDF5 inspect
+### HDF5 Inspect
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/h5/inspect" \
 	-F "file=@tests/fixtures/sample_nested.h5"
 ```
 
-### HDF5 slice
+### HDF5 Slice
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/h5/slice?dataset_path=data/subject01/run1/bold&axis=2&slice_index=3" \
 	-F "file=@tests/fixtures/sample_nested.h5" \
 	--output h5_preview.png
+```
+
+## Project Layout
+
+```text
+voxelkit/
+  core/      # shared cross-format utilities (validation, types, errors, normalization)
+  h5/        # HDF5 inspect/preview logic
+  nifti/     # NIfTI metadata/preview logic
+
+app/
+  routers/   # thin FastAPI wrappers over voxelkit library functions
 ```
 
 ## Test Fixtures
@@ -101,12 +139,18 @@ This creates:
 - `tests/fixtures/sample_3d.h5`: 3D HDF5 dataset at `volume`
 - `tests/fixtures/sample_nested.h5`: nested HDF5 dataset at `data/subject01/run1/bold`
 
+## Running Tests
+
+```powershell
+pytest -q
+```
+
 ## Roadmap
 
-- normalization improvements
-- batch processing
-- API keys
-- lightweight Python client
+- multi-file request support
+- CI for tests
+- docs expansion for format-specific library usage
+- pip packaging
 
 ## Contributing
 
