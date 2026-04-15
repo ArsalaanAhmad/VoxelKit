@@ -62,13 +62,35 @@ with open("nifti_preview.png", "wb") as f:
 	f.write(nifti_png)
 ```
 
-### 2) Run The API
+### 2) Use The CLI
+
+Run from repository root:
+
+```powershell
+python -m voxelkit.cli --help
+```
+
+Inspect examples:
+
+```powershell
+python -m voxelkit.cli inspect tests/fixtures/sample_3d.nii.gz
+python -m voxelkit.cli inspect tests/fixtures/sample_nested.h5
+```
+
+Preview examples:
+
+```powershell
+python -m voxelkit.cli preview tests/fixtures/sample_3d.nii.gz --plane axial --slice 4 --output nifti_preview.png
+python -m voxelkit.cli preview tests/fixtures/sample_nested.h5 --dataset data/subject01/run1/bold --axis 2 --slice 4 --output h5_preview.png
+```
+
+### 3) Run The API
 
 ```powershell
 py -m uvicorn app.main:app --reload
 ```
 
-### 3) Open API Docs
+### 4) Open API Docs
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
@@ -144,6 +166,32 @@ This creates:
 ```powershell
 pytest -q
 ```
+
+## Extending CLI Formats
+
+The CLI in `voxelkit/cli.py` is registry-based and intentionally thin.
+
+To add a new image format later (for example, GeoTIFF):
+
+1. Implement library functions in a format module (inspect + preview bytes).
+2. Add a small preview adapter in `voxelkit/cli.py` that maps CLI args into your preview function.
+3. Register the format in `_register_builtin_formats()` with `register_format(FormatRoute(...))`.
+4. Add any new format-specific CLI flags in `build_parser()` only if needed.
+
+Minimal registration pattern:
+
+```python
+register_format(
+	FormatRoute(
+		name="geotiff",
+		extensions=(".tif", ".tiff"),
+		inspect_fn=inspect_geotiff,
+		preview_fn=_preview_geotiff,
+	)
+)
+```
+
+This keeps CLI routing simple while all format behavior remains in the library layer.
 
 ## Roadmap
 
