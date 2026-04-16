@@ -23,6 +23,7 @@ VoxelKit removes repetitive one-off scripts for inspecting and previewing imagin
 - NIfTI metadata extraction
 - NIfTI preview slice generation (PNG)
 - NIfTI QA report (stats + warnings)
+- Directory batch QA report aggregation
 - Direct Python usage through `voxelkit/` modules
 - HTTP usage through FastAPI endpoints
 
@@ -40,7 +41,7 @@ pip install -r requirements.txt
 ```python
 from voxelkit.h5 import inspect_h5, preview_h5
 from voxelkit.nifti import nifti_metadata, preview_nifti
-from voxelkit import report_file
+from voxelkit import report_batch, report_file
 
 h5_info = inspect_h5("tests/fixtures/sample_nested.h5")
 nifti_info = nifti_metadata("tests/fixtures/sample_3d.nii.gz")
@@ -70,6 +71,8 @@ h5_report = report_file(
 )
 
 nifti_report = report_file("tests/fixtures/sample_3d.nii.gz")
+
+batch_report = report_batch("tests/fixtures", recursive=True)
 ```
 
 ### 2) Use The CLI
@@ -100,6 +103,14 @@ Report examples:
 python -m voxelkit.cli report tests/fixtures/sample_3d.nii.gz
 python -m voxelkit.cli report tests/fixtures/sample_nested.h5 --dataset data/subject01/run1/bold
 python -m voxelkit.cli report tests/fixtures/sample_nested.h5
+```
+
+Batch report examples:
+
+```powershell
+python -m voxelkit.cli report-batch tests/fixtures
+python -m voxelkit.cli report-batch tests/fixtures --no-recursive
+python -m voxelkit.cli report-batch tests/fixtures --output batch_report.json
 ```
 
 ### 3) Run The API
