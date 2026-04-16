@@ -19,8 +19,10 @@ VoxelKit removes repetitive one-off scripts for inspecting and previewing imagin
 
 - HDF5 recursive structure inspection
 - HDF5 dataset slice preview (PNG)
+- HDF5 dataset QA report (stats + warnings)
 - NIfTI metadata extraction
 - NIfTI preview slice generation (PNG)
+- NIfTI QA report (stats + warnings)
 - Direct Python usage through `voxelkit/` modules
 - HTTP usage through FastAPI endpoints
 
@@ -38,6 +40,7 @@ pip install -r requirements.txt
 ```python
 from voxelkit.h5 import inspect_h5, preview_h5
 from voxelkit.nifti import nifti_metadata, preview_nifti
+from voxelkit import report_file
 
 h5_info = inspect_h5("tests/fixtures/sample_nested.h5")
 nifti_info = nifti_metadata("tests/fixtures/sample_3d.nii.gz")
@@ -60,6 +63,13 @@ with open("h5_preview.png", "wb") as f:
 
 with open("nifti_preview.png", "wb") as f:
 	f.write(nifti_png)
+
+h5_report = report_file(
+	"tests/fixtures/sample_nested.h5",
+	dataset_path="data/subject01/run1/bold",
+)
+
+nifti_report = report_file("tests/fixtures/sample_3d.nii.gz")
 ```
 
 ### 2) Use The CLI
@@ -82,6 +92,14 @@ Preview examples:
 ```powershell
 python -m voxelkit.cli preview tests/fixtures/sample_3d.nii.gz --plane axial --slice 4 --output nifti_preview.png
 python -m voxelkit.cli preview tests/fixtures/sample_nested.h5 --dataset data/subject01/run1/bold --axis 2 --slice 4 --output h5_preview.png
+```
+
+Report examples:
+
+```powershell
+python -m voxelkit.cli report tests/fixtures/sample_3d.nii.gz
+python -m voxelkit.cli report tests/fixtures/sample_nested.h5 --dataset data/subject01/run1/bold
+python -m voxelkit.cli report tests/fixtures/sample_nested.h5
 ```
 
 ### 3) Run The API
@@ -174,9 +192,10 @@ The CLI in `voxelkit/cli.py` is registry-based and intentionally thin.
 To add a new image format later (for example, GeoTIFF):
 
 1. Implement library functions in a format module (inspect + preview bytes).
-2. Add a small preview adapter in `voxelkit/cli.py` that maps CLI args into your preview function.
-3. Register the format in `_register_builtin_formats()` with `register_format(FormatRoute(...))`.
-4. Add any new format-specific CLI flags in `build_parser()` only if needed.
+2. Implement a format report function in the format module.
+3. Add small CLI adapters in `voxelkit/cli.py` that map CLI args into preview/report functions.
+4. Register the format in `_register_builtin_formats()` with `register_format(FormatRoute(...))`.
+5. Add any new format-specific CLI flags in `build_parser()` only if needed.
 
 Minimal registration pattern:
 
@@ -187,6 +206,7 @@ register_format(
 		extensions=(".tif", ".tiff"),
 		inspect_fn=inspect_geotiff,
 		preview_fn=_preview_geotiff,
+		report_fn=_report_geotiff,
 	)
 )
 ```

@@ -41,9 +41,9 @@ pytest -q
 
 When adding a new image format, keep the project library-first:
 
-- Add format logic under `voxelkit/<format>/` (inspect + preview).
+- Add format logic under `voxelkit/<format>/` (inspect + preview + report).
 - Keep `app/routers/` and `voxelkit/cli.py` as thin adapters.
-- In `voxelkit/cli.py`, add a small preview adapter and register the format in `_register_builtin_formats()` using `register_format(FormatRoute(...))`.
+- In `voxelkit/cli.py`, add small adapters and register the format in `_register_builtin_formats()` using `register_format(FormatRoute(...))`.
 - Add tests and CLI examples in README for the new format.
 
 ## Pull Request Checklist
