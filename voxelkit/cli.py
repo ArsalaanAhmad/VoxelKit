@@ -13,14 +13,18 @@ from typing import Any, Callable
 
 import h5py
 
+from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
 from voxelkit.h5 import inspect_h5, preview as preview_h5
+from voxelkit.h5 import report as report_h5
 from voxelkit.nifti import inspect as inspect_nifti
 from voxelkit.nifti import preview as preview_nifti
+from voxelkit.nifti import report as report_nifti
 
 
 InspectFn = Callable[[str], dict[str, Any]]
 PreviewFn = Callable[[str, argparse.Namespace], bytes]
+ReportFn = Callable[[str, argparse.Namespace], dict[str, Any]]
 
 
 @dataclass(frozen=True)
@@ -31,6 +35,7 @@ class FormatRoute:
     extensions: tuple[str, ...]
     inspect_fn: InspectFn
     preview_fn: PreviewFn
+    report_fn: ReportFn
 
 
 FORMAT_ROUTES: list[FormatRoute] = []
@@ -82,6 +87,18 @@ def _preview_h5(file_path: str, args: argparse.Namespace) -> bytes:
     )
 
 
+def _report_nifti(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """Run NIfTI report with CLI arguments."""
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 report.")
+    return report_nifti(file_path)
+
+
+def _report_h5(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """Run HDF5 report with CLI arguments."""
+    return report_h5(file_path, dataset_path=args.dataset)
+
+
 def _resolve_h5_axis(file_path: str, dataset_path: str, axis: int | None) -> int:
     """Resolve HDF5 axis rules: optional for 2D, required for 3D."""
     if axis is not None:
@@ -120,6 +137,7 @@ def _register_builtin_formats() -> None:
             extensions=(".nii.gz", ".nii"),
             inspect_fn=inspect_nifti,
             preview_fn=_preview_nifti,
+            report_fn=_report_nifti,
         )
     )
     register_format(
@@ -128,6 +146,7 @@ def _register_builtin_formats() -> None:
             extensions=(".h5", ".hdf5"),
             inspect_fn=inspect_h5,
             preview_fn=_preview_h5,
+            report_fn=_report_h5,
         )
     )
 
@@ -171,11 +190,34 @@ def _handle_preview(args: argparse.Namespace) -> None:
     print(f"Wrote preview PNG: {output_path}")
 
 
+def _handle_report(args: argparse.Namespace) -> None:
+    """Handle the report command and print JSON."""
+    route = _resolve_route(args.file)
+    result = route.report_fn(args.file, args)
+    print(json.dumps(result, indent=2))
+
+
+def _handle_report_batch(args: argparse.Namespace) -> None:
+    """Handle the report-batch command and emit JSON output."""
+    result = report_batch_library(path=args.directory, recursive=args.recursive)
+    rendered_json = json.dumps(result, indent=2)
+
+    if args.output is None:
+        print(rendered_json)
+        return
+
+    output_path = Path(args.output)
+    if output_path.parent and not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(rendered_json, encoding="utf-8")
+    print(f"Wrote batch report JSON: {output_path}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI parser."""
     parser = argparse.ArgumentParser(
         prog="voxelkit",
-        description="Inspect and preview NIfTI/HDF5 imaging files.",
+        description="Inspect, preview, and report on NIfTI/HDF5 imaging files.",
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -222,6 +264,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     preview_parser.set_defaults(func=_handle_preview)
 
+    report_parser = subparsers.add_parser("report", help="Generate a QA report and print JSON.")
+    report_parser.add_argument(
+        "file",
+        help=f"Path to a supported file ({_supported_extensions_text()}).",
+    )
+    report_parser.add_argument(
+        "--dataset",
+        default=None,
+        help="HDF5 only. Optional dataset path. If omitted, first dataset is used.",
+    )
+    report_parser.set_defaults(func=_handle_report)
+
+    report_batch_parser = subparsers.add_parser(
+        "report-batch",
+        help="Generate QA reports for supported files in a directory.",
+    )
+    report_batch_parser.add_argument("directory", help="Directory path to scan for supported files.")
+    report_batch_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Disable recursive directory traversal.",
+    )
+    report_batch_parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional output JSON file path.",
+    )
+    report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
+
     return parser
 
 
@@ -244,3 +316,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
