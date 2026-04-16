@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voxelkit"
+version = "0.1.1"
+description = "Library-first toolkit for inspecting, previewing, and QA reporting imaging datasets."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Arsalaan Ahmad" }
+]
+dependencies = [
+  "numpy",
+  "nibabel",
+  "h5py",
+  "pillow",
+  "tifffile",
+]
+
+[project.scripts]
+voxelkit = "voxelkit.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["voxelkit*"]
+exclude = ["tests*"]
