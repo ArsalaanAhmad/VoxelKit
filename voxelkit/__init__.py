@@ -1,3 +1,4 @@
+from voxelkit.core.batch_report import report_batch
 from voxelkit.h5 import inspect as inspect_h5
 from voxelkit.h5 import preview as preview_h5
 from voxelkit.h5 import report as report_h5
@@ -60,4 +61,5 @@ __all__ = [
     "preview_nifti",
     "report_nifti",
     "report_file",
+    "report_batch",
 ]
