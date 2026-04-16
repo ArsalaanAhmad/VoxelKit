@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 import h5py
 
+from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
@@ -196,6 +197,22 @@ def _handle_report(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def _handle_report_batch(args: argparse.Namespace) -> None:
+    """Handle the report-batch command and emit JSON output."""
+    result = report_batch_library(path=args.directory, recursive=args.recursive)
+    rendered_json = json.dumps(result, indent=2)
+
+    if args.output is None:
+        print(rendered_json)
+        return
+
+    output_path = Path(args.output)
+    if output_path.parent and not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(rendered_json, encoding="utf-8")
+    print(f"Wrote batch report JSON: {output_path}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI parser."""
     parser = argparse.ArgumentParser(
@@ -258,6 +275,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="HDF5 only. Optional dataset path. If omitted, first dataset is used.",
     )
     report_parser.set_defaults(func=_handle_report)
+
+    report_batch_parser = subparsers.add_parser(
+        "report-batch",
+        help="Generate QA reports for supported files in a directory.",
+    )
+    report_batch_parser.add_argument("directory", help="Directory path to scan for supported files.")
+    report_batch_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Disable recursive directory traversal.",
+    )
+    report_batch_parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional output JSON file path.",
+    )
+    report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
 
     return parser
 
