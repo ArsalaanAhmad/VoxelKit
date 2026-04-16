@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+import h5py
+
 from voxelkit.core.errors import ValidationError
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.nifti import inspect as inspect_nifti
@@ -67,17 +69,47 @@ def _preview_h5(file_path: str, args: argparse.Namespace) -> bytes:
     """Run HDF5 preview with CLI arguments."""
     if not args.dataset:
         raise ValidationError("--dataset is required for HDF5 preview.")
-    if args.axis is None:
-        raise ValidationError("--axis is required for HDF5 preview.")
     if args.plane is not None:
         raise ValidationError("--plane is only valid for NIfTI preview.")
+
+    axis = _resolve_h5_axis(file_path=file_path, dataset_path=args.dataset, axis=args.axis)
 
     return preview_h5(
         file_path=file_path,
         dataset_path=args.dataset,
-        axis=args.axis,
+        axis=axis,
         slice_index=args.slice_index,
     )
+
+
+def _resolve_h5_axis(file_path: str, dataset_path: str, axis: int | None) -> int:
+    """Resolve HDF5 axis rules: optional for 2D, required for 3D."""
+    if axis is not None:
+        return axis
+
+    try:
+        with h5py.File(file_path, "r") as h5_file:
+            if dataset_path not in h5_file:
+                raise ValidationError(f"dataset_path not found: '{dataset_path}'.")
+
+            node = h5_file[dataset_path]
+            if isinstance(node, h5py.Group):
+                raise ValidationError(f"dataset_path '{dataset_path}' points to a group, not a dataset.")
+
+            if not isinstance(node, h5py.Dataset):
+                raise ValidationError(f"dataset_path '{dataset_path}' is not a valid dataset.")
+
+            if node.ndim == 2:
+                # Axis is ignored for 2D datasets by the library preview path.
+                return 0
+
+            if node.ndim == 3:
+                raise ValidationError("--axis is required for 3D HDF5 datasets.")
+    except OSError as exc:
+        raise ValidationError("Invalid, corrupted, or unreadable HDF5 file.") from exc
+
+    # For unsupported ndim cases, forward to the library preview validation path.
+    return 0
 
 
 def _register_builtin_formats() -> None:
