@@ -35,6 +35,17 @@ def create_sample_h5_nested() -> None:
         run.create_dataset("bold", data=bold)
 
 
+def create_sample_npy_2d() -> None:
+    data_2d = np.arange(10 * 14, dtype=np.float32).reshape(10, 14)
+    np.save(FIXTURES_DIR / "sample_2d.npy", data_2d)
+
+
+def create_sample_npz_multi() -> None:
+    features = np.arange(4 * 6 * 8, dtype=np.float32).reshape(4, 6, 8)
+    labels = np.arange(12, dtype=np.int16)
+    np.savez(FIXTURES_DIR / "sample_multi.npz", features=features, labels=labels)
+
+
 def main() -> None:
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -42,12 +53,16 @@ def main() -> None:
     create_sample_h5_2d()
     create_sample_h5_3d()
     create_sample_h5_nested()
+    create_sample_npy_2d()
+    create_sample_npz_multi()
 
     print("Fixtures created in tests/fixtures:")
     print("- sample_3d.nii.gz: tiny 3D NIfTI volume for /nifti endpoints")
     print("- sample_2d.h5: 2D dataset 'image' for /h5/slice 2D behavior")
     print("- sample_3d.h5: 3D dataset 'volume' for /h5/slice 3D slicing")
     print("- sample_nested.h5: nested dataset data/subject01/run1/bold for /h5/inspect and /h5/slice")
+    print("- sample_2d.npy: 2D NumPy array for inspect/report/preview")
+    print("- sample_multi.npz: NPZ with arrays 'features' and 'labels' for array selection")
 
 
 if __name__ == "__main__":

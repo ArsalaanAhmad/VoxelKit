@@ -29,6 +29,27 @@ class NiftiMetadataResult(TypedDict):
     dtype: str
 
 
+class NpzArrayInspectItem(TypedDict):
+    name: str
+    shape: list[int]
+    ndim: int
+    dtype: str
+
+
+class NpyInspectResult(TypedDict):
+    filename: str
+    format: Literal["numpy"]
+    shape: list[int]
+    ndim: int
+    dtype: str
+
+
+class NpzInspectResult(TypedDict):
+    filename: str
+    format: Literal["numpy"]
+    arrays: list[NpzArrayInspectItem]
+
+
 class FileReportResult(TypedDict):
     filename: str
     format: str
