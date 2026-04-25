@@ -22,6 +22,10 @@ def _create_h5(path: Path, dataset_path: str, shape: tuple[int, ...]) -> None:
         h5_file.create_dataset(dataset_path, data=data)
 
 
+def _create_npy(path: Path, data: np.ndarray) -> None:
+    np.save(path, data.astype(np.float32, copy=False))
+
+
 def test_report_batch_recursive_collects_reports_and_failures(tmp_path: Path) -> None:
     nested_dir = tmp_path / "nested"
     nested_dir.mkdir()
@@ -99,3 +103,31 @@ def test_cli_report_batch_writes_output_file(tmp_path: Path, capsys) -> None:
     assert "Wrote batch report JSON" in captured.out
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["successful_reports"] == 1
+
+
+def test_report_batch_aggregates_warning_counts_for_edge_case_arrays(tmp_path: Path) -> None:
+    _create_npy(tmp_path / "constant.npy", np.full((4, 4), 3.0, dtype=np.float32))
+
+    mostly_zero = np.zeros((4, 5), dtype=np.float32)
+    mostly_zero.ravel()[-1] = 1.0  # 19/20 zeros -> zero_fraction = 0.95
+    _create_npy(tmp_path / "mostly_zero.npy", mostly_zero)
+
+    with_nan = np.arange(9, dtype=np.float32).reshape(3, 3)
+    with_nan[0, 0] = np.nan
+    _create_npy(tmp_path / "with_nan.npy", with_nan)
+
+    with_inf = np.arange(9, dtype=np.float32).reshape(3, 3)
+    with_inf[1, 1] = np.inf
+    _create_npy(tmp_path / "with_inf.npy", with_inf)
+
+    result = report_batch(str(tmp_path), recursive=False)
+
+    assert result["supported_files_found"] == 4
+    assert result["successful_reports"] == 4
+
+    aggregate = result["aggregate"]
+    assert aggregate["files_with_warnings"] == 4
+    assert aggregate["warning_counts"]["Array is constant or nearly constant."] == 1
+    assert aggregate["warning_counts"]["Array is mostly zeros."] == 1
+    assert aggregate["warning_counts"]["Contains NaNs."] == 1
+    assert aggregate["warning_counts"]["Contains Infs."] == 1

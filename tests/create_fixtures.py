@@ -46,6 +46,27 @@ def create_sample_npz_multi() -> None:
     np.savez(FIXTURES_DIR / "sample_multi.npz", features=features, labels=labels)
 
 
+def create_warning_fixtures() -> None:
+    constant = np.full((4, 4), 7.0, dtype=np.float32)
+
+    mostly_zero = np.zeros((4, 5), dtype=np.float32)
+    mostly_zero.ravel()[-1] = 1.0  # 19/20 zeros -> zero_fraction = 0.95
+
+    with_nan = np.arange(9, dtype=np.float32).reshape(3, 3)
+    with_nan[0, 1] = np.nan
+
+    with_inf = np.arange(9, dtype=np.float32).reshape(3, 3)
+    with_inf[2, 2] = np.inf
+
+    unsupported_ndim = np.arange(2 * 2 * 2 * 2, dtype=np.float32).reshape(2, 2, 2, 2)
+
+    np.save(FIXTURES_DIR / "sample_constant.npy", constant)
+    np.save(FIXTURES_DIR / "sample_mostly_zero.npy", mostly_zero)
+    np.save(FIXTURES_DIR / "sample_with_nan.npy", with_nan)
+    np.save(FIXTURES_DIR / "sample_with_inf.npy", with_inf)
+    np.save(FIXTURES_DIR / "sample_4d.npy", unsupported_ndim)
+
+
 def main() -> None:
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -55,6 +76,7 @@ def main() -> None:
     create_sample_h5_nested()
     create_sample_npy_2d()
     create_sample_npz_multi()
+    create_warning_fixtures()
 
     print("Fixtures created in tests/fixtures:")
     print("- sample_3d.nii.gz: tiny 3D NIfTI volume for /nifti endpoints")
@@ -63,6 +85,11 @@ def main() -> None:
     print("- sample_nested.h5: nested dataset data/subject01/run1/bold for /h5/inspect and /h5/slice")
     print("- sample_2d.npy: 2D NumPy array for inspect/report/preview")
     print("- sample_multi.npz: NPZ with arrays 'features' and 'labels' for array selection")
+    print("- sample_constant.npy: constant values for report warning assertions")
+    print("- sample_mostly_zero.npy: mostly zero values for zero-fraction warning")
+    print("- sample_with_nan.npy: includes a NaN value for NaN warning")
+    print("- sample_with_inf.npy: includes an Inf value for Inf warning")
+    print("- sample_4d.npy: 4D array for unsupported preview dimensionality warning")
 
 
 if __name__ == "__main__":
