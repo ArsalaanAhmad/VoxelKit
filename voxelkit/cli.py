@@ -15,12 +15,15 @@ import h5py
 
 from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
-from voxelkit.core.formats import HDF5_EXTENSIONS, NIFTI_EXTENSIONS, has_extension
+from voxelkit.core.formats import HDF5_EXTENSIONS, NIFTI_EXTENSIONS, NUMPY_EXTENSIONS, detect_format
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
 from voxelkit.nifti import inspect as inspect_nifti
 from voxelkit.nifti import preview as preview_nifti
 from voxelkit.nifti import report as report_nifti
+from voxelkit.npy import inspect as inspect_npy
+from voxelkit.npy import preview as preview_npy
+from voxelkit.npy import report as report_npy
 
 
 InspectFn = Callable[[str], dict[str, Any]]
@@ -61,6 +64,8 @@ def _preview_nifti(file_path: str, args: argparse.Namespace) -> bytes:
     """Run NIfTI preview with CLI arguments."""
     if args.dataset is not None:
         raise ValidationError("--dataset is only valid for HDF5 preview.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
     if args.axis is not None:
         raise ValidationError("--axis is only valid for HDF5 preview.")
 
@@ -75,6 +80,8 @@ def _preview_h5(file_path: str, args: argparse.Namespace) -> bytes:
     """Run HDF5 preview with CLI arguments."""
     if not args.dataset:
         raise ValidationError("--dataset is required for HDF5 preview.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
     if args.plane is not None:
         raise ValidationError("--plane is only valid for NIfTI preview.")
 
@@ -92,12 +99,39 @@ def _report_nifti(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
     """Run NIfTI report with CLI arguments."""
     if args.dataset is not None:
         raise ValidationError("--dataset is only valid for HDF5 report.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
     return report_nifti(file_path)
 
 
 def _report_h5(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
     """Run HDF5 report with CLI arguments."""
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
     return report_h5(file_path, dataset_path=args.dataset)
+
+
+def _preview_npy(file_path: str, args: argparse.Namespace) -> bytes:
+    """Run NumPy preview with CLI arguments."""
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview/report.")
+    if args.plane is not None:
+        raise ValidationError("--plane is only valid for NIfTI preview.")
+
+    axis = 0 if args.axis is None else args.axis
+    return preview_npy(
+        file_path=file_path,
+        array_name=args.array_name,
+        axis=axis,
+        slice_index=args.slice_index,
+    )
+
+
+def _report_npy(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """Run NumPy report with CLI arguments."""
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview/report.")
+    return report_npy(file_path, array_name=args.array_name)
 
 
 def _resolve_h5_axis(file_path: str, dataset_path: str, axis: int | None) -> int:
@@ -143,11 +177,20 @@ def _register_builtin_formats() -> None:
     )
     register_format(
         FormatRoute(
-            name="h5",
+            name="hdf5",
             extensions=HDF5_EXTENSIONS,
             inspect_fn=inspect_h5,
             preview_fn=_preview_h5,
             report_fn=_report_h5,
+        )
+    )
+    register_format(
+        FormatRoute(
+            name="numpy",
+            extensions=NUMPY_EXTENSIONS,
+            inspect_fn=inspect_npy,
+            preview_fn=_preview_npy,
+            report_fn=_report_npy,
         )
     )
 
@@ -161,8 +204,14 @@ def _resolve_route(file_path: str) -> FormatRoute:
     Raises:
         ValidationError: If no route matches the file extension.
     """
+    try:
+        detected_format = detect_format(file_path)
+    except ValueError:
+        supported = ", ".join(ext for route in FORMAT_ROUTES for ext in route.extensions)
+        raise ValidationError(f"Unsupported file extension. Supported extensions: {supported}") from None
+
     for route in FORMAT_ROUTES:
-        if has_extension(file_path, route.extensions):
+        if route.name == detected_format:
             return route
 
     supported = ", ".join(ext for route in FORMAT_ROUTES for ext in route.extensions)
@@ -262,6 +311,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="HDF5 only. Dataset path, for example data/subject01/run1/bold.",
     )
     preview_parser.add_argument(
+        "--array",
+        dest="array_name",
+        default=None,
+        help="NumPy NPZ only. Array name inside the archive.",
+    )
+    preview_parser.add_argument(
         "--axis",
         type=int,
         default=None,
@@ -290,6 +345,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--dataset",
         default=None,
         help="HDF5 only. Optional dataset path. If omitted, first dataset is used.",
+    )
+    report_parser.add_argument(
+        "--array",
+        dest="array_name",
+        default=None,
+        help="NumPy NPZ only. Array name inside the archive.",
     )
     report_parser.set_defaults(func=_handle_report)
 
