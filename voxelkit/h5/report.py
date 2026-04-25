@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import HDF5_EXTENSIONS
 from voxelkit.core.report import build_array_report
 from voxelkit.core.types import FileReportResult
 from voxelkit.core.validation import require_supported_extension
@@ -28,7 +29,7 @@ def report(file_path: str, dataset_path: str | None = None) -> FileReportResult:
     """Generate a QA report for an HDF5 dataset."""
     require_supported_extension(
         file_path=file_path,
-        extensions=(".h5", ".hdf5"),
+        extensions=HDF5_EXTENSIONS,
         message="Unsupported file type. Please provide a .h5 or .hdf5 file.",
     )
 

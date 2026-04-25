@@ -20,6 +20,11 @@ dependencies = [
   "tifffile",
 ]
 
+[project.optional-dependencies]
+gui = [
+  "streamlit",
+]
+
 [project.scripts]
 voxelkit = "voxelkit.cli:main"
 

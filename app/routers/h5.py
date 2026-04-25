@@ -1,41 +1,29 @@
 import os
-import tempfile
 from importlib import import_module
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from ..utils.files import infer_temp_suffix, require_upload_extension, save_upload_to_temp
+from voxelkit.core.formats import HDF5_EXTENSIONS
 
 router = APIRouter(prefix="/h5", tags=["h5"])
 
 
-def _is_supported_h5_filename(filename: str | None) -> bool:
-    lowered = (filename or "").lower()
-    return lowered.endswith(".h5") or lowered.endswith(".hdf5")
-
-
 def _h5_temp_suffix(filename: str | None) -> str:
-    lowered = (filename or "").lower()
-    if lowered.endswith(".hdf5"):
-        return ".hdf5"
-    return ".h5"
+    return infer_temp_suffix(filename, extensions=HDF5_EXTENSIONS, default_suffix=".h5")
 
 
 def _validate_h5_upload_filename(filename: str | None) -> None:
-    if not filename:
-        raise ValueError("Missing filename.")
-
-    if not _is_supported_h5_filename(filename):
-        raise ValueError("Unsupported file type. Please upload a .h5 or .hdf5 file.")
+    require_upload_extension(
+        filename=filename,
+        extensions=HDF5_EXTENSIONS,
+        message="Unsupported file type. Please upload a .h5 or .hdf5 file.",
+    )
 
 
 async def _save_upload_to_temp(file: UploadFile) -> str:
     """Persist an uploaded HDF5 file to a temporary path for library processing."""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=_h5_temp_suffix(file.filename)) as temp_file:
-        content = await file.read()
-        if not content:
-            raise ValueError("Uploaded file is empty.")
-        temp_file.write(content)
-        return temp_file.name
+    return await save_upload_to_temp(file, suffix=_h5_temp_suffix(file.filename))
 
 
 @router.post("/inspect")

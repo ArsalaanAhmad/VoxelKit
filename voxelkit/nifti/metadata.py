@@ -3,6 +3,7 @@ import os
 import nibabel as nib
 from nibabel.filebasedimages import ImageFileError
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import NIFTI_EXTENSIONS
 from voxelkit.core.types import NiftiMetadataResult
 from voxelkit.core.validation import require_supported_extension
 
@@ -22,7 +23,7 @@ def inspect(file_path: str) -> NiftiMetadataResult:
     """
     require_supported_extension(
         file_path=file_path,
-        extensions=(".nii", ".nii.gz"),
+        extensions=NIFTI_EXTENSIONS,
         message="Unsupported file type. Please provide a .nii or .nii.gz file.",
     )
 

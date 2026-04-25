@@ -1,41 +1,29 @@
 import os
-import tempfile
 from importlib import import_module
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
+from ..utils.files import infer_temp_suffix, require_upload_extension, save_upload_to_temp
+from voxelkit.core.formats import NIFTI_EXTENSIONS
 
 router = APIRouter(prefix="/nifti", tags=["nifti"])
 
 
-def _is_supported_nifti_filename(filename: str | None) -> bool:
-    lowered = (filename or "").lower()
-    return lowered.endswith(".nii") or lowered.endswith(".nii.gz")
-
-
 def _nifti_temp_suffix(filename: str | None) -> str:
-    lowered = (filename or "").lower()
-    if lowered.endswith(".nii.gz"):
-        return ".nii.gz"
-    return ".nii"
+    return infer_temp_suffix(filename, extensions=NIFTI_EXTENSIONS, default_suffix=".nii")
 
 
 def _validate_nifti_upload_filename(filename: str | None) -> None:
-    if not filename:
-        raise ValueError("Missing filename.")
-
-    if not _is_supported_nifti_filename(filename):
-        raise ValueError("Unsupported file type. Please upload a .nii or .nii.gz file.")
+    require_upload_extension(
+        filename=filename,
+        extensions=NIFTI_EXTENSIONS,
+        message="Unsupported file type. Please upload a .nii or .nii.gz file.",
+    )
 
 
 async def _save_upload_to_temp(file: UploadFile) -> str:
     """Persist an uploaded NIfTI file to a temporary path for library processing."""
-    with tempfile.NamedTemporaryFile(delete=False, suffix=_nifti_temp_suffix(file.filename)) as temp_file:
-        content = await file.read()
-        if not content:
-            raise ValueError("Uploaded file is empty.")
-        temp_file.write(content)
-        return temp_file.name
+    return await save_upload_to_temp(file, suffix=_nifti_temp_suffix(file.filename))
 
 
 @router.post("/metadata")

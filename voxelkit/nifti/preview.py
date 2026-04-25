@@ -3,6 +3,7 @@ import numpy as np
 from nibabel.filebasedimages import ImageFileError
 
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import NIFTI_EXTENSIONS
 from voxelkit.core.image_utils import to_png_bytes
 from voxelkit.core.normalization import normalize_to_uint8
 from voxelkit.core.validation import (
@@ -63,7 +64,7 @@ def preview(
     """
     require_supported_extension(
         file_path=file_path,
-        extensions=(".nii", ".nii.gz"),
+        extensions=NIFTI_EXTENSIONS,
         message="Unsupported file type. Please provide a .nii or .nii.gz file.",
     )
 

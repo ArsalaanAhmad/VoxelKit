@@ -123,6 +123,29 @@ py -m uvicorn app.main:app --reload
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
+## Optional Local GUI
+
+VoxelKit includes an optional Streamlit prototype for local/offline inspect, report, and preview workflows.
+The GUI runs entirely on your machine and does not upload files to external services.
+
+Install optional GUI extras:
+
+```powershell
+pip install -e .[gui]
+```
+
+Launch the GUI:
+
+```powershell
+voxelkit gui
+```
+
+If Streamlit is not installed, the CLI prints:
+
+```text
+Install GUI extras with: pip install voxelkit[gui]
+```
+
 ## API Endpoints
 
 - `POST /h5/inspect`

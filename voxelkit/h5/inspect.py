@@ -2,6 +2,7 @@ import os
 
 import h5py
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import HDF5_EXTENSIONS
 from voxelkit.core.types import H5InspectResult, InspectItem
 from voxelkit.core.validation import require_supported_extension
 
@@ -21,7 +22,7 @@ def inspect_h5(file_path: str) -> H5InspectResult:
     """
     require_supported_extension(
         file_path=file_path,
-        extensions=(".h5", ".hdf5"),
+        extensions=HDF5_EXTENSIONS,
         message="Unsupported file type. Please provide a .h5 or .hdf5 file.",
     )
 

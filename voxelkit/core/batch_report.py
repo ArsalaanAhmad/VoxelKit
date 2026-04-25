@@ -4,15 +4,13 @@ from collections import Counter
 from pathlib import Path
 
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import SUPPORTED_DATA_EXTENSIONS, has_extension
 from voxelkit.core.types import (
     BatchAggregateSummary,
     BatchFailureItem,
     BatchFileReportResult,
     BatchReportResult,
 )
-
-
-SUPPORTED_BATCH_EXTENSIONS = (".nii", ".nii.gz", ".h5", ".hdf5")
 
 
 def _discover_files(root_path: Path, recursive: bool) -> list[Path]:
@@ -23,8 +21,7 @@ def _discover_files(root_path: Path, recursive: bool) -> list[Path]:
 
 def _is_supported_file(path: Path) -> bool:
     """Return True when path extension is supported for reporting."""
-    lowered = path.name.lower()
-    return lowered.endswith(SUPPORTED_BATCH_EXTENSIONS)
+    return has_extension(path.name, SUPPORTED_DATA_EXTENSIONS)
 
 
 def _shape_to_string(shape: list[int]) -> str:

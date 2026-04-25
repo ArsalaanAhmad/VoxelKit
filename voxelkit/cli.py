@@ -15,6 +15,7 @@ import h5py
 
 from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
+from voxelkit.core.formats import HDF5_EXTENSIONS, NIFTI_EXTENSIONS, has_extension
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
 from voxelkit.nifti import inspect as inspect_nifti
@@ -134,7 +135,7 @@ def _register_builtin_formats() -> None:
     register_format(
         FormatRoute(
             name="nifti",
-            extensions=(".nii.gz", ".nii"),
+            extensions=NIFTI_EXTENSIONS,
             inspect_fn=inspect_nifti,
             preview_fn=_preview_nifti,
             report_fn=_report_nifti,
@@ -143,7 +144,7 @@ def _register_builtin_formats() -> None:
     register_format(
         FormatRoute(
             name="h5",
-            extensions=(".h5", ".hdf5"),
+            extensions=HDF5_EXTENSIONS,
             inspect_fn=inspect_h5,
             preview_fn=_preview_h5,
             report_fn=_report_h5,
@@ -155,10 +156,13 @@ _register_builtin_formats()
 
 
 def _resolve_route(file_path: str) -> FormatRoute:
-    """Find the route for a file based on extension."""
-    lowered = file_path.lower()
+    """Return the registered CLI route that matches a file path.
+
+    Raises:
+        ValidationError: If no route matches the file extension.
+    """
     for route in FORMAT_ROUTES:
-        if any(lowered.endswith(ext) for ext in route.extensions):
+        if has_extension(file_path, route.extensions):
             return route
 
     supported = ", ".join(ext for route in FORMAT_ROUTES for ext in route.extensions)
@@ -211,6 +215,19 @@ def _handle_report_batch(args: argparse.Namespace) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_json, encoding="utf-8")
     print(f"Wrote batch report JSON: {output_path}")
+
+
+def _handle_gui(_args: argparse.Namespace) -> None:
+    """Handle the gui command and launch the optional local Streamlit app."""
+    from voxelkit.gui import GUI_MISSING_DEPENDENCY_MESSAGE, run_gui
+
+    try:
+        exit_code = run_gui()
+    except ModuleNotFoundError as exc:
+        raise ValidationError(GUI_MISSING_DEPENDENCY_MESSAGE) from exc
+
+    if exit_code != 0:
+        raise ValidationError(f"GUI process exited with code {exit_code}.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -293,6 +310,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output JSON file path.",
     )
     report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
+
+    gui_parser = subparsers.add_parser(
+        "gui",
+        help="Launch the optional local/offline Streamlit GUI prototype.",
+    )
+    gui_parser.set_defaults(func=_handle_gui)
 
     return parser
 
