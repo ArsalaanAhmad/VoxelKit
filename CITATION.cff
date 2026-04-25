@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use VoxelKit in your work, please cite it using the metadata below."
+title: "VoxelKit"
+type: software
+authors:
+  - family-names: "Ahmad"
+    given-names: "Arsalaan"
+repository-code: "https://github.com/ArsalaanAhmad/VoxelKit"
+url: "https://github.com/ArsalaanAhmad/VoxelKit"
+license: "MIT"
+version: "0.1.2"
+date-released: "2026-04-25"
+keywords:
+  - medical imaging
+  - nifti
+  - hdf5
+  - numpy
+  - quality assurance
+  - cli
