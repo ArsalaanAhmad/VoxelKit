@@ -15,7 +15,13 @@ import h5py
 
 from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
-from voxelkit.core.formats import HDF5_EXTENSIONS, NIFTI_EXTENSIONS, NUMPY_EXTENSIONS, detect_format
+from voxelkit.core.formats import (
+    HDF5_EXTENSIONS,
+    NIFTI_EXTENSIONS,
+    NUMPY_EXTENSIONS,
+    TIFF_EXTENSIONS,
+    detect_format,
+)
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
 from voxelkit.nifti import inspect as inspect_nifti
@@ -24,6 +30,9 @@ from voxelkit.nifti import report as report_nifti
 from voxelkit.npy import inspect as inspect_npy
 from voxelkit.npy import preview as preview_npy
 from voxelkit.npy import report as report_npy
+from voxelkit.tiff import inspect as inspect_tiff
+from voxelkit.tiff import preview as preview_tiff
+from voxelkit.tiff import report as report_tiff
 
 
 InspectFn = Callable[[str], dict[str, Any]]
@@ -134,6 +143,37 @@ def _report_npy(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
     return report_npy(file_path, array_name=args.array_name)
 
 
+def _preview_tiff(file_path: str, args: argparse.Namespace) -> bytes:
+    """Run TIFF preview with CLI arguments.
+
+    TIFF does not use --plane (NIfTI only), --dataset (HDF5 only), or
+    --array (NumPy NPZ only). Both --axis and --slice are accepted for 3D
+    z-stack TIFFs; they are silently ignored for 2D single-page images.
+    """
+    if args.plane is not None:
+        raise ValidationError("--plane is only valid for NIfTI preview.")
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
+
+    axis = 0 if args.axis is None else args.axis
+    return preview_tiff(
+        file_path=file_path,
+        axis=axis,
+        slice_index=args.slice_index,
+    )
+
+
+def _report_tiff(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """Run TIFF report with CLI arguments."""
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview/report.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
+    return report_tiff(file_path)
+
+
 def _resolve_h5_axis(file_path: str, dataset_path: str, axis: int | None) -> int:
     """Resolve HDF5 axis rules: optional for 2D, required for 3D."""
     if axis is not None:
@@ -191,6 +231,15 @@ def _register_builtin_formats() -> None:
             inspect_fn=inspect_npy,
             preview_fn=_preview_npy,
             report_fn=_report_npy,
+        )
+    )
+    register_format(
+        FormatRoute(
+            name="tiff",
+            extensions=TIFF_EXTENSIONS,
+            inspect_fn=inspect_tiff,
+            preview_fn=_preview_tiff,
+            report_fn=_report_tiff,
         )
     )
 
