@@ -20,7 +20,6 @@ import warnings as _warnings_module
 import numpy as np
 
 from voxelkit.core.errors import ValidationError
-from voxelkit.core.formats import NUMPY_EXTENSIONS
 from voxelkit.core.types import EmbeddingReportResult
 from voxelkit.core.validation import require_supported_extension
 
@@ -173,8 +172,9 @@ def report(file_path: str) -> EmbeddingReportResult:
                     f"(>{_OUTLIER_NORM_SIGMA}σ from mean). These may be corrupted "
                     "or out-of-distribution embedding vectors."
                 )
-        else:
-            # All sample norms are identical — the embedding space has collapsed.
+        elif n_samples > 1:
+            # std == 0 with multiple samples means all norms are identical —
+            # the embedding space has collapsed to a single point.
             warnings.append(
                 "All sample L2 norms are identical. The embedding space may have "
                 "collapsed (all outputs are the same vector)."
