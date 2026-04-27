@@ -102,6 +102,11 @@ def preview(
         message="Embedding preview requires a .npy file.",
     )
 
+    if max_samples < 1:
+        raise ValidationError(
+            f"max_samples must be at least 1, got {max_samples}."
+        )
+
     array = _load_embedding(file_path)
     n_samples = array.shape[0]
 
