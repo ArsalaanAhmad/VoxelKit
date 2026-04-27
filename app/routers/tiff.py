@@ -6,13 +6,15 @@ voxelkit.tiff function, then removes the temp file in a finally block.
 """
 
 import os
-from importlib import import_module
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
 from app.utils.files import infer_temp_suffix, require_upload_extension, save_upload_to_temp
 from voxelkit.core.formats import TIFF_EXTENSIONS
+from voxelkit.tiff.inspect import inspect as inspect_tiff
+from voxelkit.tiff.preview import preview as preview_tiff
+from voxelkit.tiff.report import report as report_tiff
 
 router = APIRouter(prefix="/tiff", tags=["tiff"])
 
@@ -48,13 +50,10 @@ async def tiff_metadata(file: UploadFile = File(...)) -> dict:
     """
     temp_path = ""
     try:
-        inspect = import_module("voxelkit.tiff.inspect").inspect
         _validate_tiff_upload(file.filename)
         temp_path = await _save_upload_to_temp(file)
 
-        metadata = inspect(temp_path)
-        # Restore the original client filename so the response reflects what
-        # was uploaded rather than the server-side temp path.
+        metadata = inspect_tiff(temp_path)
         metadata["filename"] = file.filename
         return metadata
     except ValueError as exc:
@@ -65,8 +64,11 @@ async def tiff_metadata(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=500, detail="Failed to process TIFF file.") from exc
     finally:
         await file.close()
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+        if temp_path:
+            try:
+                os.remove(temp_path)
+            except FileNotFoundError:
+                pass
 
 
 @router.post(
@@ -91,11 +93,10 @@ async def tiff_preview(
     """
     temp_path = ""
     try:
-        preview = import_module("voxelkit.tiff.preview").preview
         _validate_tiff_upload(file.filename)
         temp_path = await _save_upload_to_temp(file)
 
-        png_bytes = preview(
+        png_bytes = preview_tiff(
             file_path=temp_path,
             axis=axis,
             slice_index=slice_index,
@@ -110,8 +111,11 @@ async def tiff_preview(
         raise HTTPException(status_code=500, detail="Failed to generate TIFF preview.") from exc
     finally:
         await file.close()
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+        if temp_path:
+            try:
+                os.remove(temp_path)
+            except FileNotFoundError:
+                pass
 
 
 @router.post("/report")
@@ -123,11 +127,10 @@ async def tiff_report(file: UploadFile = File(...)) -> dict:
     """
     temp_path = ""
     try:
-        report = import_module("voxelkit.tiff.report").report
         _validate_tiff_upload(file.filename)
         temp_path = await _save_upload_to_temp(file)
 
-        result = report(temp_path)
+        result = report_tiff(temp_path)
         result["filename"] = file.filename
         return result
     except ValueError as exc:
@@ -138,5 +141,8 @@ async def tiff_report(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=500, detail="Failed to generate TIFF report.") from exc
     finally:
         await file.close()
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+        if temp_path:
+            try:
+                os.remove(temp_path)
+            except FileNotFoundError:
+                pass

@@ -48,9 +48,7 @@ def report(file_path: str) -> FileReportResult:
     except (OSError, ValueError) as exc:
         raise ValidationError("Could not open TIFF file.") from exc
 
-    # preview is supported for 2D (H,W), 2D-colour (H,W,C), and 3D (Z,H,W)
-    is_2d_colour = array.ndim == 3 and array.shape[-1] in (3, 4)
-    preview_supported = array.ndim == 2 or array.ndim == 3 or is_2d_colour
+    preview_supported = array.ndim in (2, 3)
 
     return build_array_report(
         array=array,

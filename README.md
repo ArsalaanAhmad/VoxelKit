@@ -4,6 +4,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PyPI version](https://img.shields.io/pypi/v/voxelkit.svg)](https://pypi.org/project/voxelkit/)
+[![DOI](https://zenodo.org/badge/1210656483.svg)](https://doi.org/10.5281/zenodo.19774569)
 [![FastAPI](https://img.shields.io/badge/FastAPI-thin%20wrapper-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Formats](https://img.shields.io/badge/formats-NIfTI%20%7C%20HDF5%20%7C%20NumPy%20%7C%20TIFF-5A67D8)](#supported-formats)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

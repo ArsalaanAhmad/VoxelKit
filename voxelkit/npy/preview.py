@@ -96,3 +96,5 @@ def preview(
     if as_array:
         return normalized
     return to_png_bytes(normalized)
+
+

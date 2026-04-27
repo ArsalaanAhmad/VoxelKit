@@ -60,17 +60,15 @@ def _extract_preview_slice(
     Raises:
         ValidationError: For unsupported dimensionality or out-of-bounds index.
     """
-    # Collapse a colour axis to grayscale by averaging channels so that the
-    # rest of the pipeline always works with a single-channel 2D image.
-    if array.ndim == 3 and array.shape[-1] in (3, 4):
-        # (H, W, C) → (H, W) — average over colour channels
-        return np.mean(array, axis=-1).astype(np.float32)
-
     if array.ndim == 2:
         return np.asarray(array, dtype=np.float32)
 
     if array.ndim == 3:
-        # Shape is (Z, H, W): each page is one Z-slice.
+        # Colour image (H, W, C) — collapse channels to grayscale before slicing.
+        if array.shape[-1] in (3, 4):
+            return np.mean(array, axis=-1).astype(np.float32)
+
+        # Z-stack (Z, H, W) — extract one plane along the requested axis.
         if axis not in (0, 1, 2):
             raise ValidationError("Invalid axis for 3D TIFF. Axis must be 0, 1, or 2.")
 
