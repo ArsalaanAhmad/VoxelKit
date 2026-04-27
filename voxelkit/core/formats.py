@@ -14,7 +14,9 @@ HDF5_EXTENSIONS: tuple[str, ...] = (".h5", ".hdf5")
 TIFF_EXTENSIONS: tuple[str, ...] = (".tif", ".tiff")
 # Reserved for upcoming numpy format support.
 NUMPY_EXTENSIONS: tuple[str, ...] = (".npy", ".npz")
-SUPPORTED_DATA_EXTENSIONS: tuple[str, ...] = NIFTI_EXTENSIONS + HDF5_EXTENSIONS + NUMPY_EXTENSIONS
+SUPPORTED_DATA_EXTENSIONS: tuple[str, ...] = (
+    NIFTI_EXTENSIONS + HDF5_EXTENSIONS + TIFF_EXTENSIONS + NUMPY_EXTENSIONS
+)
 
 
 def _normalize_path_text(file_path_or_name: str | Path) -> str:
