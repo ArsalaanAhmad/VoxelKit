@@ -8,6 +8,40 @@ stable, documented schema without importing implementation details.
 from typing import Literal, TypeAlias, TypedDict
 
 
+class EmbeddingReportResult(TypedDict):
+    """QA statistics returned by `voxelkit.embedding.report` for a .npy matrix.
+
+    Analyses a 2D (N_samples, D_dims) array both per-dimension and per-sample,
+    surfacing embedding-specific failure modes that global statistics miss.
+
+    Per-dimension fields:
+      `dead_dim_count`  — dimensions whose std across samples is near zero;
+                          these carry no signal and may cause instability.
+      `nan_dim_count`   — dimensions containing at least one NaN value.
+      `inf_dim_count`   — dimensions containing at least one Inf value.
+
+    Per-sample fields:
+      `norm_mean` / `norm_std`  — mean and std of per-sample L2 norms.
+      `outlier_sample_count`    — samples whose norm is >3σ from the mean;
+                                  likely corrupted or out-of-distribution.
+    """
+
+    filename: str
+    format: str
+    n_samples: int
+    n_dims: int
+    dtype: str
+    total_nan_count: int
+    total_inf_count: int
+    dead_dim_count: int
+    nan_dim_count: int
+    inf_dim_count: int
+    norm_mean: float | None
+    norm_std: float | None
+    outlier_sample_count: int
+    warnings: list[str]
+
+
 class TiffInspectResult(TypedDict):
     """Metadata returned by `voxelkit.tiff.inspect` for a .tif/.tiff file.
 

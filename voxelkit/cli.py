@@ -33,6 +33,8 @@ from voxelkit.npy import report as report_npy
 from voxelkit.tiff import inspect as inspect_tiff
 from voxelkit.tiff import preview as preview_tiff
 from voxelkit.tiff import report as report_tiff
+from voxelkit.embedding import report as report_embedding
+from voxelkit.embedding import preview as preview_embedding
 
 
 InspectFn = Callable[[str], dict[str, Any]]
@@ -315,6 +317,27 @@ def _handle_report_batch(args: argparse.Namespace) -> None:
     print(f"Wrote batch report JSON: {output_path}")
 
 
+def _handle_embed_report(args: argparse.Namespace) -> None:
+    """Handle the embed-report command and print embedding QA JSON."""
+    result = report_embedding(args.file)
+    print(json.dumps(result, indent=2))
+
+
+def _handle_embed_preview(args: argparse.Namespace) -> None:
+    """Handle the embed-preview command and write a heatmap PNG to disk."""
+    png_bytes = preview_embedding(
+        file_path=args.file,
+        max_samples=args.max_samples,
+    )
+
+    output_path = Path(args.output)
+    if output_path.parent and not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    output_path.write_bytes(png_bytes)
+    print(f"Wrote embedding heatmap PNG: {output_path}")
+
+
 def _handle_gui(_args: argparse.Namespace) -> None:
     """Handle the gui command and launch the optional local Streamlit app."""
     from voxelkit.gui import GUI_MISSING_DEPENDENCY_MESSAGE, run_gui
@@ -420,6 +443,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output JSON file path.",
     )
     report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
+
+    embed_report_parser = subparsers.add_parser(
+        "embed-report",
+        help="Generate an embedding-aware QA report for a .npy feature matrix.",
+    )
+    embed_report_parser.add_argument(
+        "file",
+        help="Path to a .npy file containing a 2D (N_samples, D_dims) array.",
+    )
+    embed_report_parser.set_defaults(func=_handle_embed_report)
+
+    embed_preview_parser = subparsers.add_parser(
+        "embed-preview",
+        help="Render a .npy embedding matrix as a per-column-normalised PNG heatmap.",
+    )
+    embed_preview_parser.add_argument(
+        "file",
+        help="Path to a .npy file containing a 2D (N_samples, D_dims) array.",
+    )
+    embed_preview_parser.add_argument(
+        "--max-samples",
+        dest="max_samples",
+        type=int,
+        default=256,
+        help="Maximum number of sample rows to render. Defaults to 256.",
+    )
+    embed_preview_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output PNG file path.",
+    )
+    embed_preview_parser.set_defaults(func=_handle_embed_preview)
 
     gui_parser = subparsers.add_parser(
         "gui",

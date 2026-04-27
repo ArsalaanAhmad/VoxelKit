@@ -26,6 +26,8 @@ from voxelkit.npy import report as report_npy
 from voxelkit.tiff import inspect as inspect_tiff
 from voxelkit.tiff import preview as preview_tiff
 from voxelkit.tiff import report as report_tiff
+from voxelkit.embedding import report as report_embedding
+from voxelkit.embedding import preview as preview_embedding
 
 
 def inspect_file(
@@ -177,6 +179,8 @@ __all__ = [
     "inspect_tiff",
     "preview_tiff",
     "report_tiff",
+    "report_embedding",
+    "preview_embedding",
     "report_file",
     "report_batch",
 ]

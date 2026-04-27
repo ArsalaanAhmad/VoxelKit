@@ -1,0 +1,49 @@
+site_name: VoxelKit
+site_description: Inspect, preview, and QA-check multidimensional imaging data.
+site_url: https://arsalaanahmad.github.io/VoxelKit/
+repo_url: https://github.com/ArsalaanAhmad/VoxelKit
+repo_name: ArsalaanAhmad/VoxelKit
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - CLI Usage: cli.md
+  - Python Usage: python-usage.md
+  - QA Warnings: qa-warnings.md
+
+theme:
+  name: material
+  logo: assets/voxelkit_github_banner.svg
+  favicon: assets/voxelkit_github_banner.svg
+  palette:
+    - scheme: default
+      primary: teal
+      accent: cyan
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ArsalaanAhmad/VoxelKit
+    - icon: fontawesome/solid/box-open
+      link: https://pypi.org/project/voxelkit/
+    - icon: fontawesome/solid/quote-right
+      link: https://doi.org/10.5281/zenodo.19774569

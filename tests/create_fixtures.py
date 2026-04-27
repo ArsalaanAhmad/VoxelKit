@@ -80,6 +80,49 @@ def create_sample_tiff_3d() -> None:
     tifffile.imwrite(str(FIXTURES_DIR / "sample_3d.tif"), data_3d)
 
 
+def create_sample_embedding() -> None:
+    """Create a clean (N_samples, D_dims) embedding fixture with no anomalies."""
+    rng = np.random.default_rng(42)
+    embeddings = rng.standard_normal((64, 128)).astype(np.float32)
+    np.save(FIXTURES_DIR / "sample_embedding.npy", embeddings)
+
+
+def create_embedding_with_dead_dims() -> None:
+    """Create an embedding where 4 dimensions are constant (dead).
+
+    Dead dimensions have std=0 across all samples and should trigger a warning
+    in the embedding report.
+    """
+    rng = np.random.default_rng(0)
+    embeddings = rng.standard_normal((64, 32)).astype(np.float32)
+    # Zero out 4 columns entirely to create dead dimensions.
+    embeddings[:, [0, 5, 10, 15]] = 0.0
+    np.save(FIXTURES_DIR / "sample_embedding_dead_dims.npy", embeddings)
+
+
+def create_embedding_with_outliers() -> None:
+    """Create an embedding where 2 samples have anomalously large L2 norms.
+
+    These outlier rows should be detected by the per-sample norm analysis in
+    the embedding report.
+    """
+    rng = np.random.default_rng(1)
+    embeddings = rng.standard_normal((64, 32)).astype(np.float32)
+    # Inject two outlier samples with very large values.
+    embeddings[0, :] = 100.0
+    embeddings[1, :] = -100.0
+    np.save(FIXTURES_DIR / "sample_embedding_outliers.npy", embeddings)
+
+
+def create_embedding_with_nan_dims() -> None:
+    """Create an embedding where 2 dimensions contain NaN values."""
+    rng = np.random.default_rng(2)
+    embeddings = rng.standard_normal((32, 16)).astype(np.float32)
+    embeddings[:, 3] = np.nan
+    embeddings[:, 7] = np.nan
+    np.save(FIXTURES_DIR / "sample_embedding_nan_dims.npy", embeddings)
+
+
 def create_warning_fixtures() -> None:
     """Create NumPy .npy fixtures that trigger specific QA report warnings.
 
@@ -118,6 +161,10 @@ def main() -> None:
     create_sample_npz_multi()
     create_sample_tiff_2d()
     create_sample_tiff_3d()
+    create_sample_embedding()
+    create_embedding_with_dead_dims()
+    create_embedding_with_outliers()
+    create_embedding_with_nan_dims()
     create_warning_fixtures()
 
     print("Fixtures created in tests/fixtures:")
@@ -134,6 +181,10 @@ def main() -> None:
     print("- sample_with_nan.npy: includes a NaN value for NaN warning")
     print("- sample_with_inf.npy: includes an Inf value for Inf warning")
     print("- sample_4d.npy      : 4D array for unsupported preview dimensionality warning")
+    print("- sample_embedding.npy           : clean (64, 128) float32 embedding matrix")
+    print("- sample_embedding_dead_dims.npy : embedding with 4 dead (constant) dimensions")
+    print("- sample_embedding_outliers.npy  : embedding with 2 outlier samples (norm >> mean)")
+    print("- sample_embedding_nan_dims.npy  : embedding with 2 NaN-filled dimensions")
 
 
 if __name__ == "__main__":
