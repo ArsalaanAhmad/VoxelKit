@@ -1,0 +1,39 @@
+name: publish
+
+# Publishes to PyPI whenever a version tag (e.g. v0.1.5) is pushed to the repo.
+# To release: git tag v0.1.5 && git push --tags
+#
+# Prerequisite: add a PYPI_API_TOKEN secret in
+# GitHub repo → Settings → Secrets and variables → Actions.
+# Generate the token at pypi.org → Account → API tokens (scope: project "voxelkit").
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build distribution packages
+        run: python -m build
+
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
