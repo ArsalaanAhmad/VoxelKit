@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://arsalaanahmad.github.io/VoxelKit/sitemap.xml
