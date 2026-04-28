@@ -26,6 +26,9 @@ build/
 dist/
 *.egg-info/
 
+# MkDocs generated site (never commit — deploy via CI or gh-deploy)
+site/
+
 # IDE/editor settings
 .vscode/
 .idea/
@@ -33,3 +36,7 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Uploaded/temp files from the REST API server
+*.tmp
+tmp/
