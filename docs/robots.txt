@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://arsalaanahmad.github.io/VoxelKit/sitemap.xml
+Sitemap: https://arsalaanahmad.github.io/VoxelKit/sitemap_index.xml

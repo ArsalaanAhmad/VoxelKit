@@ -82,6 +82,9 @@ markdown_extensions:
   - toc:
       permalink: true
 
+hooks:
+  - hooks/rename_sitemap.py
+
 plugins:
   - search
 
