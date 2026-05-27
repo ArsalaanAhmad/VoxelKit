@@ -16,6 +16,7 @@ import h5py
 from voxelkit import report_batch as report_batch_library
 from voxelkit.core.errors import ValidationError
 from voxelkit.core.formats import (
+    DICOM_EXTENSIONS,
     HDF5_EXTENSIONS,
     NIFTI_EXTENSIONS,
     NUMPY_EXTENSIONS,
@@ -28,6 +29,9 @@ from voxelkit.core.handler import (
     ReportFn as ReportFnProtocol,
     validate_handler_signatures,
 )
+from voxelkit.dicom import inspect as inspect_dicom
+from voxelkit.dicom import preview as preview_dicom
+from voxelkit.dicom import report as report_dicom
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
 from voxelkit.nifti import inspect as inspect_nifti
@@ -197,6 +201,62 @@ def _report_tiff(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
     return report_tiff(file_path)
 
 
+def _inspect_nifti(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """NIfTI inspect adapter — discards args (no NIfTI-specific inspect flags)."""
+    del args
+    return inspect_nifti(file_path)
+
+
+def _inspect_h5(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """HDF5 inspect adapter — discards args (no HDF5-specific inspect flags)."""
+    del args
+    return inspect_h5(file_path)
+
+
+def _inspect_npy(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """NumPy inspect adapter — discards args (no NumPy-specific inspect flags)."""
+    del args
+    return inspect_npy(file_path)
+
+
+def _inspect_tiff(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """TIFF inspect adapter — discards args (no TIFF-specific inspect flags)."""
+    del args
+    return inspect_tiff(file_path)
+
+
+def _inspect_dicom(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """DICOM inspect adapter — honours `--phi` to include patient identifiers."""
+    include_phi = bool(getattr(args, "phi", False))
+    return inspect_dicom(file_path, include_phi=include_phi)
+
+
+def _preview_dicom(file_path: str, args: argparse.Namespace) -> bytes:
+    """DICOM preview adapter. Single .dcm is 2-D; series-dir volumes accept --axis/--slice."""
+    if args.plane is not None:
+        raise ValidationError("--plane is only valid for NIfTI preview.")
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
+
+    axis = 0 if args.axis is None else args.axis
+    return preview_dicom(
+        file_path=file_path,
+        axis=axis,
+        slice_index=args.slice_index,
+    )
+
+
+def _report_dicom(file_path: str, args: argparse.Namespace) -> dict[str, Any]:
+    """DICOM report adapter — rejects flags that only apply to other formats."""
+    if args.dataset is not None:
+        raise ValidationError("--dataset is only valid for HDF5 preview/report.")
+    if args.array_name is not None:
+        raise ValidationError("--array is only valid for NumPy NPZ preview/report.")
+    return report_dicom(file_path)
+
+
 def _resolve_h5_axis(file_path: str, dataset_path: str, axis: int | None) -> int:
     """Resolve HDF5 axis rules: optional for 2D, required for 3D."""
     if axis is not None:
@@ -233,7 +293,7 @@ def _register_builtin_formats() -> None:
         FormatRoute(
             name="nifti",
             extensions=NIFTI_EXTENSIONS,
-            inspect_fn=inspect_nifti,
+            inspect_fn=_inspect_nifti,
             preview_fn=_preview_nifti,
             report_fn=_report_nifti,
         )
@@ -242,7 +302,7 @@ def _register_builtin_formats() -> None:
         FormatRoute(
             name="hdf5",
             extensions=HDF5_EXTENSIONS,
-            inspect_fn=inspect_h5,
+            inspect_fn=_inspect_h5,
             preview_fn=_preview_h5,
             report_fn=_report_h5,
         )
@@ -251,7 +311,7 @@ def _register_builtin_formats() -> None:
         FormatRoute(
             name="numpy",
             extensions=NUMPY_EXTENSIONS,
-            inspect_fn=inspect_npy,
+            inspect_fn=_inspect_npy,
             preview_fn=_preview_npy,
             report_fn=_report_npy,
         )
@@ -260,9 +320,18 @@ def _register_builtin_formats() -> None:
         FormatRoute(
             name="tiff",
             extensions=TIFF_EXTENSIONS,
-            inspect_fn=inspect_tiff,
+            inspect_fn=_inspect_tiff,
             preview_fn=_preview_tiff,
             report_fn=_report_tiff,
+        )
+    )
+    register_format(
+        FormatRoute(
+            name="dicom",
+            extensions=DICOM_EXTENSIONS,
+            inspect_fn=_inspect_dicom,
+            preview_fn=_preview_dicom,
+            report_fn=_report_dicom,
         )
     )
 
@@ -296,9 +365,22 @@ def _supported_extensions_text() -> str:
 
 
 def _handle_inspect(args: argparse.Namespace) -> None:
-    """Handle the inspect command and print JSON."""
+    """Handle the inspect command and print JSON.
+
+    `--phi` only has effect for DICOM input; passing it with any other
+    format raises a ValidationError so the user does not silently believe
+    their data is being treated as PHI-bearing.
+    """
     route = _resolve_route(args.file)
-    result = route.inspect_fn(args.file)
+    if getattr(args, "phi", False):
+        if route.name != "dicom":
+            raise ValidationError("--phi is only valid for DICOM input.")
+        print(
+            "WARNING: --phi is set. Patient-identifying fields will be included "
+            "in the inspect output. Treat the result as PHI.",
+            file=sys.stderr,
+        )
+    result = route.inspect_fn(args.file, args)
     print(json.dumps(result, indent=2))
 
 
@@ -383,7 +465,13 @@ def build_parser() -> argparse.ArgumentParser:
     inspect_parser = subparsers.add_parser("inspect", help="Inspect metadata and print JSON.")
     inspect_parser.add_argument(
         "file",
-        help=f"Path to a supported file ({_supported_extensions_text()}).",
+        help=f"Path to a supported file ({_supported_extensions_text()}) or a DICOM series directory.",
+    )
+    inspect_parser.add_argument(
+        "--phi",
+        action="store_true",
+        help="DICOM only. Include patient-identifying fields in the output. "
+             "Prints a stderr warning when set — treat the result as PHI.",
     )
     inspect_parser.set_defaults(func=_handle_inspect)
 

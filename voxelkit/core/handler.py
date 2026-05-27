@@ -23,13 +23,18 @@ from typing import Any, Protocol, runtime_checkable
 
 @runtime_checkable
 class InspectFn(Protocol):
-    """Signature: `(file_path: str) -> dict[str, Any]`.
+    """Signature: `(file_path: str, args: argparse.Namespace) -> dict[str, Any]`.
 
     Reads metadata for a single file and returns it as a JSON-serialisable
     dictionary. Must not load pixel data unless the format makes that cheap.
+
+    `args` carries CLI flags that the adapter may translate into the library
+    function's kwargs (e.g. DICOM's `--phi` toggles PHI inclusion). Adapters
+    that ignore CLI flags simply discard `args` — same convention as the
+    PreviewFn / ReportFn adapters.
     """
 
-    def __call__(self, file_path: str) -> dict[str, Any]: ...
+    def __call__(self, file_path: str, args: argparse.Namespace) -> dict[str, Any]: ...
 
 
 @runtime_checkable
@@ -107,7 +112,7 @@ def validate_handler_signatures(
     required positional arguments. Static type-checkers (mypy/pyright) cover
     the deeper contract via the Protocol classes above.
     """
-    _check_callable_arity(inspect_fn, label="inspect_fn", expected_required=1)
+    _check_callable_arity(inspect_fn, label="inspect_fn", expected_required=2)
     _check_callable_arity(preview_fn, label="preview_fn", expected_required=2)
     _check_callable_arity(report_fn, label="report_fn", expected_required=2)
 

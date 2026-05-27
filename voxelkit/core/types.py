@@ -132,6 +132,46 @@ class NpzInspectResult(TypedDict):
     arrays: list[NpzArrayInspectItem]
 
 
+class DicomInspectResult(TypedDict, total=False):
+    """Metadata returned by `voxelkit.dicom.inspect` for a .dcm file or series directory.
+
+    The `source` field is `"file"` for a single .dcm and `"series"` for a
+    directory of slices. A series result carries `slice_count` (the number
+    of .dcm files combined into one 3-D volume) and `series_instance_uid`
+    for traceability.
+
+    PHI fields (`patient_name`, `patient_id`, `patient_birth_date`, ...) are
+    omitted by default. Pass `include_phi=True` to inspect() and they are
+    added as siblings — but the caller is responsible for handling that
+    output securely. The CLI emits a stderr warning when `--phi` is set.
+    """
+
+    filename: str
+    format: Literal["dicom"]
+    source: Literal["file", "series"]
+    shape: list[int]
+    ndim: int
+    dtype: str
+    slice_count: int
+    modality: str
+    series_description: str
+    body_part_examined: str
+    voxel_size: list[float]
+    series_instance_uid: str
+    study_instance_uid: str
+    # PHI fields — present only when include_phi=True
+    patient_name: str
+    patient_id: str
+    patient_birth_date: str
+    patient_sex: str
+    patient_age: str
+    accession_number: str
+    referring_physician_name: str
+    institution_name: str
+    study_date: str
+    study_time: str
+
+
 class FileReportResult(TypedDict):
     """QA statistics returned by any `report` function across all formats.
 

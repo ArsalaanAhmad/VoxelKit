@@ -7,6 +7,7 @@ from voxelkit.core.batch_report import report_batch
 from voxelkit.core.errors import ValidationError
 from voxelkit.core.formats import FormatName, detect_format
 from voxelkit.core.types import (
+    DicomInspectResult,
     FileReportResult,
     H5InspectResult,
     NiftiMetadataResult,
@@ -14,6 +15,9 @@ from voxelkit.core.types import (
     NpzInspectResult,
     TiffInspectResult,
 )
+from voxelkit.dicom import inspect as inspect_dicom
+from voxelkit.dicom import preview as preview_dicom
+from voxelkit.dicom import report as report_dicom
 from voxelkit.h5 import inspect as inspect_h5
 from voxelkit.h5 import preview as preview_h5
 from voxelkit.h5 import report as report_h5
@@ -32,19 +36,34 @@ from voxelkit.embedding import preview as preview_embedding
 
 def inspect_file(
     file_path: str | Path,
-) -> H5InspectResult | NiftiMetadataResult | NpyInspectResult | NpzInspectResult | TiffInspectResult:
+    *,
+    include_phi: bool = False,
+) -> (
+    DicomInspectResult
+    | H5InspectResult
+    | NiftiMetadataResult
+    | NpyInspectResult
+    | NpzInspectResult
+    | TiffInspectResult
+):
     """Inspect a supported file by routing to the corresponding format module.
 
     Args:
-        file_path: Path to a supported imaging file.
+        file_path: Path to a supported imaging file or a DICOM series directory.
+        include_phi: DICOM-only. When True, patient identifiers are included
+            in the result. No effect for any other format. Defaults to False —
+            callers asking for PHI should be explicit.
 
     Returns:
         Format-specific metadata dictionary produced by the library module.
 
     Raises:
-        ValueError: If `file_path` does not use a supported extension.
+        ValidationError: when `include_phi` is set for a non-DICOM input.
+        ValueError: If `file_path` does not match a supported format.
     """
     format_name = detect_format(file_path)
+    if include_phi and format_name != "dicom":
+        raise ValidationError("include_phi is only valid for DICOM input.")
     if format_name == "hdf5":
         return inspect_h5(str(file_path))
     if format_name == "nifti":
@@ -53,6 +72,8 @@ def inspect_file(
         return inspect_npy(str(file_path))
     if format_name == "tiff":
         return inspect_tiff(str(file_path))
+    if format_name == "dicom":
+        return inspect_dicom(str(file_path), include_phi=include_phi)
     raise ValueError("Unsupported file extension for inspect().")
 
 
@@ -118,6 +139,19 @@ def preview_file(
             slice_index=slice_index,
         )
 
+    if format_name == "dicom":
+        if dataset_path is not None:
+            raise ValidationError("dataset_path is only valid for HDF5 preview.")
+        if array_name is not None:
+            raise ValidationError("array_name is only valid for NumPy NPZ preview.")
+        if axis is None:
+            axis = 0
+        return preview_dicom(
+            file_path=str(file_path),
+            axis=axis,
+            slice_index=slice_index,
+        )
+
     raise ValueError("Unsupported file extension for preview_file().")
 
 
@@ -160,6 +194,12 @@ def report_file(
         if array_name is not None:
             raise ValidationError("array_name is only valid for NumPy NPZ report.")
         return report_tiff(str(file_path))
+    if format_name == "dicom":
+        if dataset_path is not None:
+            raise ValidationError("dataset_path is only valid for HDF5 report.")
+        if array_name is not None:
+            raise ValidationError("array_name is only valid for NumPy NPZ report.")
+        return report_dicom(str(file_path))
     raise ValueError("Unsupported file extension for report_file().")
 
 
@@ -167,6 +207,9 @@ __all__ = [
     "inspect_file",
     "preview_file",
     "inspect",
+    "inspect_dicom",
+    "preview_dicom",
+    "report_dicom",
     "inspect_h5",
     "preview_h5",
     "report_h5",
