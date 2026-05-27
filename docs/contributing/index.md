@@ -70,10 +70,15 @@ VoxelKit is **library-first**:
 
 **Adding a new file format?**
 
-1. Add `voxelkit/<format>/` with `inspect.py`, `preview.py`, `report.py`
+There's a worked skeleton at [`voxelkit/templates/format_template.py`](https://github.com/ArsalaanAhmad/VoxelKit/blob/main/voxelkit/templates/format_template.py). It walks through every step in one file — start there.
+
+The short version:
+
+1. Add `voxelkit/<format>/` with `inspect.py`, `preview.py`, `report.py`. The three callables must match the Protocols in `voxelkit.core.handler` (`InspectFn`, `PreviewFn`, `ReportFn`) — `FormatRoute.__post_init__` arity-checks them at registration time.
 2. Register it in `voxelkit/cli.py` via `register_format(FormatRoute(...))`
-3. Add a FastAPI router under `app/routers/` and include it in `app/main.py`
-4. Add tests and a fixture file under `tests/`
+3. Wire library-level dispatch in `voxelkit/__init__.py` (`inspect_file`, `preview_file`, `report_file`)
+4. Add a FastAPI router under `app/routers/` and include it in `app/main.py`
+5. Add tests and a synthetic fixture file under `tests/` (never real patient data)
 
 ---
 
