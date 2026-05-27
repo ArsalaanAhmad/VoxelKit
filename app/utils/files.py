@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import tempfile
 
 from fastapi import UploadFile
 
+from app.middleware import MAX_UPLOAD_BYTES, MAX_UPLOAD_MB
 from voxelkit.core.formats import first_matching_extension, has_extension
 
 
@@ -37,15 +39,37 @@ def infer_temp_suffix(
     return first_matching_extension(filename, extensions) or default_suffix
 
 
+_CHUNK = 1024 * 1024  # 1 MB read chunks
+
+
 async def save_upload_to_temp(file: UploadFile, suffix: str) -> str:
-    """Persist uploaded content to a temporary file path.
+    """Stream uploaded content to a temporary file, enforcing the size cap.
 
     Raises:
-        ValueError: If the upload content is empty.
+        ValueError: If the upload is empty or exceeds MAX_UPLOAD_BYTES.
     """
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-        content = await file.read()
-        if not content:
+    temp_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            temp_path = tmp.name
+            total = 0
+            while True:
+                chunk = await file.read(_CHUNK)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_UPLOAD_BYTES:
+                    raise ValueError(
+                        f"Upload exceeds the {MAX_UPLOAD_MB} MB limit."
+                    )
+                tmp.write(chunk)
+        if total == 0:
             raise ValueError("Uploaded file is empty.")
-        temp_file.write(content)
-        return temp_file.name
+        return temp_path
+    except Exception:
+        if temp_path:
+            try:
+                os.remove(temp_path)
+            except FileNotFoundError:
+                pass
+        raise
