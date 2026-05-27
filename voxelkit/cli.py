@@ -406,10 +406,28 @@ def _handle_report(args: argparse.Namespace) -> None:
 
 
 def _handle_report_batch(args: argparse.Namespace) -> None:
-    """Handle the report-batch command and emit JSON output."""
-    result = report_batch_library(path=args.directory, recursive=args.recursive)
-    rendered_json = json.dumps(result, indent=2)
+    """Handle the report-batch command and emit JSON or self-contained HTML.
 
+    Default: JSON to stdout. `--output FILE` writes JSON to a file.
+    `--html FILE` writes a self-contained HTML report (with thumbnails) to
+    a file. `--output` and `--html` are mutually exclusive.
+    """
+    if args.output is not None and args.html is not None:
+        raise ValidationError("--output (JSON) and --html are mutually exclusive.")
+
+    result = report_batch_library(path=args.directory, recursive=args.recursive)
+
+    if args.html is not None:
+        from voxelkit.core.html_report import render_batch_report_html
+
+        html_path = Path(args.html)
+        if html_path.parent and not html_path.parent.exists():
+            html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(render_batch_report_html(result), encoding="utf-8")
+        print(f"Wrote batch report HTML: {html_path}")
+        return
+
+    rendered_json = json.dumps(result, indent=2)
     if args.output is None:
         print(rendered_json)
         return
@@ -574,6 +592,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         default=None,
         help="Optional output JSON file path.",
+    )
+    report_batch_parser.add_argument(
+        "--html",
+        default=None,
+        help="Write a self-contained HTML report (with thumbnails) to this path. "
+             "Mutually exclusive with --output.",
     )
     report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
 
