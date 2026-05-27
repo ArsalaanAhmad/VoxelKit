@@ -29,7 +29,7 @@ from voxelkit.core.handler import (
     ReportFn as ReportFnProtocol,
     validate_handler_signatures,
 )
-from voxelkit.dicom import anonymise_directory
+from voxelkit.dicom import anonymise_directory, dicom_to_nifti
 from voxelkit.dicom import inspect as inspect_dicom
 from voxelkit.dicom import preview as preview_dicom
 from voxelkit.dicom import report as report_dicom
@@ -443,6 +443,13 @@ def _handle_anonymise(args: argparse.Namespace) -> None:
     )
 
 
+def _handle_convert(args: argparse.Namespace) -> None:
+    """Handle the convert command — DICOM (.dcm file or series dir) -> NIfTI."""
+    summary = dicom_to_nifti(input_path=args.input, output_path=args.output)
+    print(json.dumps(summary, indent=2))
+    print(f"Wrote NIfTI: {summary['output_path']}", file=sys.stderr)
+
+
 def _handle_embed_preview(args: argparse.Namespace) -> None:
     """Handle the embed-preview command and write a heatmap PNG to disk."""
     png_bytes = preview_embedding(
@@ -587,6 +594,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable recursive directory traversal.",
     )
     anonymise_parser.set_defaults(func=_handle_anonymise, recursive=True)
+
+    convert_parser = subparsers.add_parser(
+        "convert",
+        help="Convert a DICOM file or series directory to a NIfTI (.nii / .nii.gz).",
+    )
+    convert_parser.add_argument(
+        "input",
+        help="Path to a .dcm file or a directory of DICOM slices.",
+    )
+    convert_parser.add_argument(
+        "output",
+        help="Output NIfTI path (.nii or .nii.gz).",
+    )
+    convert_parser.set_defaults(func=_handle_convert)
 
     embed_report_parser = subparsers.add_parser(
         "embed-report",
