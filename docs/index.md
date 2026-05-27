@@ -453,7 +453,22 @@ hide:
   <div class="vk-feat">
     <span class="vk-feat-icon">📁</span>
     <h3>Batch QA Reporting</h3>
-    <p>Aggregate QA across an entire directory with <code>report-batch</code>. Surface dataset-level risks before they reach your pipeline.</p>
+    <p>Aggregate QA across an entire directory with <code>report-batch</code>. Emit JSON for pipelines or a self-contained HTML report with thumbnails for sharing.</p>
+  </div>
+  <div class="vk-feat">
+    <span class="vk-feat-icon">🩻</span>
+    <h3>DICOM with PHI Stripping</h3>
+    <p>Inspect single <code>.dcm</code> files or whole series directories. Patient identifiers are stripped by default; <code>--phi</code> opts in with a stderr warning.</p>
+  </div>
+  <div class="vk-feat">
+    <span class="vk-feat-icon">🛡️</span>
+    <h3>Batch Anonymisation</h3>
+    <p>Scrub PHI from every <code>.dcm</code> under a directory tree with <code>voxelkit anonymise</code>. Preserves pixel data, modality, and series grouping.</p>
+  </div>
+  <div class="vk-feat">
+    <span class="vk-feat-icon">🔄</span>
+    <h3>DICOM → NIfTI Conversion</h3>
+    <p>Convert a single slice or full series directory to NIfTI with <code>voxelkit convert</code>. Builds the affine from DICOM headers with the LPS → RAS flip applied.</p>
   </div>
   <div class="vk-feat">
     <span class="vk-feat-icon">🧬</span>
@@ -479,13 +494,14 @@ hide:
 
 <!-- ── Format Coverage ───────────────────────────────────────────── -->
 <h2 class="vk-section-heading">Supported Formats</h2>
-<p class="vk-section-sub">One toolkit, four imaging ecosystems</p>
+<p class="vk-section-sub">One toolkit, five imaging ecosystems</p>
 
 <div class="vk-formats">
   <span class="vk-pill">🧠 .nii &nbsp;/&nbsp; .nii.gz</span>
   <span class="vk-pill">🗄️ .h5 &nbsp;/&nbsp; .hdf5</span>
   <span class="vk-pill">🔢 .npy &nbsp;/&nbsp; .npz</span>
   <span class="vk-pill">🖼️ .tif &nbsp;/&nbsp; .tiff</span>
+  <span class="vk-pill">🩻 .dcm &nbsp;/&nbsp; DICOM series</span>
 </div>
 
 <!-- ── Who Benefits ──────────────────────────────────────────────── -->

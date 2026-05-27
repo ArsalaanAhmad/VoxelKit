@@ -38,6 +38,20 @@ If you're working with 2D feature matrices (N samples × D dimensions), these tw
 
 ---
 
+## DICOM-specific helpers
+
+DICOM has two extra concerns no other format shares: **single-file vs. series-directory inputs**, and **PHI (Protected Health Information)**. The standard `inspect_file` / `preview_file` / `report_file` handle both shapes already — PHI is stripped by default. When you need to opt into PHI, anonymise a tree, or convert a series into NIfTI, use the DICOM-specific entry points:
+
+| Function | What it returns | Page |
+|---|---|---|
+| `inspect_dicom(path, include_phi=False)` | DICOM metadata dict | [→](dicom.md) |
+| `preview_dicom(path, ...)` | PNG slice from a `.dcm` or series | [→](dicom.md) |
+| `report_dicom(path)` | QA stats for `.dcm` or series | [→](dicom.md) |
+| `anonymise_directory(in, out)` | Scrubbed copies of every `.dcm` in a tree | [→](dicom.md) |
+| `dicom_to_nifti(in, out)` | NIfTI-1 conversion | [→](dicom.md) |
+
+---
+
 ## A note on format-specific imports
 
 The four main functions cover 95% of use cases. But if you need direct access to a format-specific module — for example, to call NIfTI inspection directly — those are also exported:
@@ -48,8 +62,10 @@ from voxelkit import (
     inspect_npy, preview_npy, report_npy,
     nifti_metadata, preview_nifti, report_nifti,
     inspect_tiff, preview_tiff, report_tiff,
+    inspect_dicom, preview_dicom, report_dicom,
     report_embedding, preview_embedding,
 )
+from voxelkit.dicom import anonymise_directory, dicom_to_nifti
 ```
 
 For most work, stick with `inspect_file`, `preview_file`, `report_file`, and `report_batch`.

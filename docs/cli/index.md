@@ -1,5 +1,5 @@
 ---
-description: VoxelKit CLI overview — seven commands for inspecting, previewing, and QA-checking imaging files from the terminal.
+description: VoxelKit CLI overview — nine commands for inspecting, previewing, and QA-checking imaging files from the terminal.
 ---
 
 # CLI Reference
@@ -10,14 +10,16 @@ The `voxelkit` command gives you everything in the library without writing a lin
 voxelkit --help
 ```
 
-There are seven commands total:
+There are nine commands total:
 
 | Command | What it does |
 |---|---|
 | [`inspect`](inspect.md) | Print file metadata as JSON |
 | [`preview`](preview.md) | Save a PNG slice to disk |
 | [`report`](report.md) | Print a QA report as JSON |
-| [`report-batch`](batch.md) | QA report for every file in a directory |
+| [`report-batch`](batch.md) | QA report for every file in a directory (`--html` for a self-contained HTML report) |
+| [`anonymise`](anonymise.md) | Scrub PHI from every `.dcm` under a directory |
+| [`convert`](convert.md) | Convert a DICOM file or series to a NIfTI volume |
 | [`embed-report`](embed-report.md) | Per-dimension + per-sample embedding QA |
 | [`embed-preview`](embed-preview.md) | Render an embedding matrix as a heatmap PNG |
 | [`gui`](gui.md) | Launch the local Streamlit interface |

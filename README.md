@@ -33,19 +33,23 @@ No format-specific boilerplate. No juggling `nibabel`, `h5py`, and `tifffile` se
 - 🔍 **Inspect** — shape, dtype, and metadata from any supported file, instantly
 - 🖼️ **Preview** — PNG slice from any 3D/4D volume, one command
 - 📊 **QA Reports** — per-file stats and warnings (NaNs, constant arrays, zero-dominated volumes)
-- 📁 **Batch QA** — scan an entire directory, surface dataset-level risks in one shot
+- 📁 **Batch QA** — scan an entire directory, emit JSON or a self-contained HTML report with thumbnails
+- 🩻 **DICOM Support** — single `.dcm` files and full series directories; PHI stripped by default
+- 🛡️ **Anonymisation** — `voxelkit anonymise ./dicoms/ --output ./clean/` scrubs PHI in bulk
+- 🔄 **DICOM → NIfTI** — `voxelkit convert scan.dcm scan.nii.gz`
 - 🧬 **Embedding Analysis** — dead dimensions, outlier samples, collapsed spaces
 - 🌐 **REST API** — FastAPI server for HTTP-based workflows
 - 🖥️ **Local GUI** — optional Streamlit interface, runs entirely offline
 
 ## Supported Formats
 
-| Format | Extensions |
+| Format | Extensions / Input |
 |---|---|
 | NIfTI | `.nii` `.nii.gz` |
 | HDF5 | `.h5` `.hdf5` |
 | NumPy | `.npy` `.npz` |
 | TIFF | `.tif` `.tiff` |
+| DICOM | `.dcm` file or directory of slices (series) |
 
 ## Install
 
@@ -71,8 +75,23 @@ voxelkit report scan.nii.gz
 # Show me a slice
 voxelkit preview scan.nii.gz --plane axial --output preview.png
 
-# Check a whole dataset at once
+# Check a whole dataset at once (JSON or self-contained HTML)
 voxelkit report-batch data/scans/
+voxelkit report-batch data/scans/ --html report.html
+```
+
+DICOM workflows:
+
+```bash
+# Inspect a single .dcm or a whole series directory (PHI stripped by default)
+voxelkit inspect scan.dcm
+voxelkit inspect ./series/
+
+# Scrub PHI from every .dcm under a directory
+voxelkit anonymise ./incoming/ --output ./anonymised/
+
+# Convert DICOM to NIfTI
+voxelkit convert ./series/ volume.nii.gz
 ```
 
 Or from Python:
@@ -80,9 +99,14 @@ Or from Python:
 ```python
 from voxelkit import inspect_file, report_file, report_batch
 
-info   = inspect_file("scan.nii.gz")
+info   = inspect_file("scan.nii.gz")        # also handles .dcm + series dirs
 report = report_file("scan.nii.gz")
 batch  = report_batch("data/scans/")
+
+# DICOM-specific helpers
+from voxelkit.dicom import anonymise_directory, dicom_to_nifti
+anonymise_directory("./incoming/", "./anonymised/")
+dicom_to_nifti("./series/", "volume.nii.gz")
 ```
 
 ## Full Documentation
