@@ -9,7 +9,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import h5py
 
@@ -21,6 +21,12 @@ from voxelkit.core.formats import (
     NUMPY_EXTENSIONS,
     TIFF_EXTENSIONS,
     detect_format,
+)
+from voxelkit.core.handler import (
+    InspectFn as InspectFnProtocol,
+    PreviewFn as PreviewFnProtocol,
+    ReportFn as ReportFnProtocol,
+    validate_handler_signatures,
 )
 from voxelkit.h5 import inspect_h5, preview as preview_h5
 from voxelkit.h5 import report as report_h5
@@ -37,20 +43,35 @@ from voxelkit.embedding import report as report_embedding
 from voxelkit.embedding import preview as preview_embedding
 
 
-InspectFn = Callable[[str], dict[str, Any]]
-PreviewFn = Callable[[str, argparse.Namespace], bytes]
-ReportFn = Callable[[str, argparse.Namespace], dict[str, Any]]
+# Public CLI-level callable aliases. The canonical structural contracts live in
+# voxelkit.core.handler as Protocol classes; these aliases preserve the original
+# `cli.InspectFn` / `cli.PreviewFn` / `cli.ReportFn` import paths.
+InspectFn = InspectFnProtocol
+PreviewFn = PreviewFnProtocol
+ReportFn = ReportFnProtocol
 
 
 @dataclass(frozen=True)
 class FormatRoute:
-    """Routing metadata for one supported file format."""
+    """Routing metadata for one supported file format.
+
+    The three callables must satisfy the Protocols defined in
+    `voxelkit.core.handler` (InspectFn, PreviewFn, ReportFn). Arity is checked
+    at construction time so a misconfigured registration fails early.
+    """
 
     name: str
     extensions: tuple[str, ...]
     inspect_fn: InspectFn
     preview_fn: PreviewFn
     report_fn: ReportFn
+
+    def __post_init__(self) -> None:
+        validate_handler_signatures(
+            inspect_fn=self.inspect_fn,
+            preview_fn=self.preview_fn,
+            report_fn=self.report_fn,
+        )
 
 
 FORMAT_ROUTES: list[FormatRoute] = []
