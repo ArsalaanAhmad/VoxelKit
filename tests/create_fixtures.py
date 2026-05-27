@@ -13,7 +13,10 @@ from pathlib import Path
 import h5py
 import nibabel as nib
 import numpy as np
+import pydicom
 import tifffile
+from pydicom.dataset import Dataset, FileMetaDataset
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -123,6 +126,106 @@ def create_embedding_with_nan_dims() -> None:
     np.save(FIXTURES_DIR / "sample_embedding_nan_dims.npy", embeddings)
 
 
+def _build_dicom_dataset(
+    *,
+    pixel_value: int,
+    instance_number: int,
+    position_z: float,
+    with_phi: bool,
+) -> Dataset:
+    """Build a minimal in-memory DICOM dataset with synthetic pixel data.
+
+    Pixel data is 8x8 uint16 filled with `pixel_value`. PHI tags are added
+    only when `with_phi=True`; the fields below are synthetic strings that
+    look like real PHI but are not — never seed this from real data.
+    """
+    file_meta = FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"  # CT Image Storage
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+    ds = Dataset()
+    ds.file_meta = file_meta
+    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+    ds.StudyInstanceUID = generate_uid()
+    ds.SeriesInstanceUID = generate_uid()
+    ds.Modality = "CT"
+    ds.SeriesDescription = "VoxelKit synthetic"
+    ds.BodyPartExamined = "HEAD"
+
+    ds.Rows = 8
+    ds.Columns = 8
+    ds.BitsAllocated = 16
+    ds.BitsStored = 16
+    ds.HighBit = 15
+    ds.PixelRepresentation = 0
+    ds.SamplesPerPixel = 1
+    ds.PhotometricInterpretation = "MONOCHROME2"
+    ds.PixelSpacing = [0.5, 0.5]
+    ds.SliceThickness = 1.0
+    ds.InstanceNumber = instance_number
+    ds.ImagePositionPatient = [0.0, 0.0, position_z]
+    ds.ImageOrientationPatient = [1, 0, 0, 0, 1, 0]
+
+    if with_phi:
+        # Entirely synthetic. None of these correspond to a real patient.
+        ds.PatientName = "Test^Patient"
+        ds.PatientID = "PID-1234"
+        ds.PatientBirthDate = "19900101"
+        ds.PatientSex = "M"
+        ds.AccessionNumber = "ACC-5678"
+        ds.ReferringPhysicianName = "Smith^Jane"
+        ds.InstitutionName = "Test Hospital"
+        ds.StudyDate = "20240101"
+        ds.StudyTime = "120000"
+
+    pixels = np.full((8, 8), pixel_value, dtype=np.uint16)
+    ds.PixelData = pixels.tobytes()
+    return ds
+
+
+def create_sample_dicom_single() -> None:
+    """Create a single 2-D synthetic .dcm with PHI populated.
+
+    Used by inspect / preview / report / anonymise / convert tests.
+    """
+    dataset = _build_dicom_dataset(
+        pixel_value=100,
+        instance_number=1,
+        position_z=0.0,
+        with_phi=True,
+    )
+    dataset.save_as(str(FIXTURES_DIR / "sample.dcm"), write_like_original=False)
+
+
+def create_sample_dicom_series() -> None:
+    """Create a 4-slice synthetic DICOM series directory.
+
+    Slices have distinct pixel values (10, 11, 12, 13) so the report
+    distinguishes them from a constant volume. ImagePositionPatient[2]
+    increases per slice so the loader's Z-axis sort kicks in.
+    """
+    series_dir = FIXTURES_DIR / "sample_series"
+    series_dir.mkdir(parents=True, exist_ok=True)
+
+    # Wipe any stale files from a prior run so the fixture is deterministic.
+    for stale in series_dir.glob("*.dcm"):
+        stale.unlink()
+
+    for index, position_z in enumerate([0.0, 1.0, 2.0, 3.0]):
+        dataset = _build_dicom_dataset(
+            pixel_value=10 + index,
+            instance_number=index + 1,
+            position_z=position_z,
+            with_phi=True,
+        )
+        dataset.save_as(
+            str(series_dir / f"slice_{index:03d}.dcm"),
+            write_like_original=False,
+        )
+
+
 def create_warning_fixtures() -> None:
     """Create NumPy .npy fixtures that trigger specific QA report warnings.
 
@@ -166,6 +269,8 @@ def main() -> None:
     create_embedding_with_outliers()
     create_embedding_with_nan_dims()
     create_warning_fixtures()
+    create_sample_dicom_single()
+    create_sample_dicom_series()
 
     print("Fixtures created in tests/fixtures:")
     print("- sample_3d.nii.gz   : tiny 3D NIfTI volume")
@@ -185,6 +290,8 @@ def main() -> None:
     print("- sample_embedding_dead_dims.npy : embedding with 4 dead (constant) dimensions")
     print("- sample_embedding_outliers.npy  : embedding with 2 outlier samples (norm >> mean)")
     print("- sample_embedding_nan_dims.npy  : embedding with 2 NaN-filled dimensions")
+    print("- sample.dcm                     : single 2D synthetic DICOM with PHI populated")
+    print("- sample_series/                 : 4-slice synthetic DICOM series directory with PHI")
 
 
 if __name__ == "__main__":
