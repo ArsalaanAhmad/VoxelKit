@@ -29,6 +29,7 @@ from voxelkit.core.handler import (
     ReportFn as ReportFnProtocol,
     validate_handler_signatures,
 )
+from voxelkit.dicom import anonymise_directory
 from voxelkit.dicom import inspect as inspect_dicom
 from voxelkit.dicom import preview as preview_dicom
 from voxelkit.dicom import report as report_dicom
@@ -426,6 +427,22 @@ def _handle_embed_report(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def _handle_anonymise(args: argparse.Namespace) -> None:
+    """Handle the anonymise command — strip PHI from a DICOM directory tree."""
+    summary = anonymise_directory(
+        input_dir=args.directory,
+        output_dir=args.output,
+        recursive=args.recursive,
+    )
+    rendered = json.dumps(summary, indent=2)
+    print(rendered)
+    print(
+        f"Anonymised {summary['files_anonymised']} of {summary['total_dcm_files']} "
+        f".dcm files -> {summary['output_dir']}",
+        file=sys.stderr,
+    )
+
+
 def _handle_embed_preview(args: argparse.Namespace) -> None:
     """Handle the embed-preview command and write a heatmap PNG to disk."""
     png_bytes = preview_embedding(
@@ -552,6 +569,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional output JSON file path.",
     )
     report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
+
+    anonymise_parser = subparsers.add_parser(
+        "anonymise",
+        help="Scrub PHI from every .dcm under a directory and write copies to --output.",
+    )
+    anonymise_parser.add_argument("directory", help="Input directory tree to scan for .dcm files.")
+    anonymise_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output directory. Created if needed. Mirrors the input tree.",
+    )
+    anonymise_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Disable recursive directory traversal.",
+    )
+    anonymise_parser.set_defaults(func=_handle_anonymise, recursive=True)
 
     embed_report_parser = subparsers.add_parser(
         "embed-report",
