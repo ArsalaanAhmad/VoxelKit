@@ -391,9 +391,6 @@ hide:
     <a href="https://pypi.org/project/voxelkit/" target="_blank">
       <img src="https://img.shields.io/pypi/v/voxelkit?style=flat-square&color=00c4b4&logo=pypi&logoColor=white&label=PyPI" alt="PyPI version">
     </a>
-    <a href="https://pepy.tech/projects/voxelkit" target="_blank">
-      <img src="https://static.pepy.tech/badge/voxelkit?style=flat-square" alt="PyPI Downloads">
-    </a>
     <a href="https://github.com/ArsalaanAhmad/VoxelKit/stargazers" target="_blank">
       <img src="https://img.shields.io/github/stars/ArsalaanAhmad/VoxelKit?style=flat-square&color=ffd700&logo=github&logoColor=white" alt="GitHub Stars">
     </a>
@@ -434,7 +431,7 @@ hide:
 </div>
 
 <!-- ── Features ──────────────────────────────────────────────────── -->
-<h2 class="vk-section-heading">✨ Features</h2>
+<h2 class="vk-section-heading">Features</h2>
 <p class="vk-section-sub">Everything you need for day-to-day imaging dataset triage</p>
 
 <div class="vk-features">
@@ -481,7 +478,7 @@ hide:
 </div>
 
 <!-- ── Format Coverage ───────────────────────────────────────────── -->
-<h2 class="vk-section-heading">📂 Supported Formats</h2>
+<h2 class="vk-section-heading">Supported Formats</h2>
 <p class="vk-section-sub">One toolkit, four imaging ecosystems</p>
 
 <div class="vk-formats">
@@ -492,7 +489,7 @@ hide:
 </div>
 
 <!-- ── Who Benefits ──────────────────────────────────────────────── -->
-<h2 class="vk-section-heading">👥 Who Can Benefit</h2>
+<h2 class="vk-section-heading">Who Can Benefit</h2>
 <p class="vk-section-sub">VoxelKit fits wherever multidimensional data needs triage</p>
 
 <div class="vk-audience">

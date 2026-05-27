@@ -37,8 +37,6 @@ nav:
 theme:
   name: material
   custom_dir: overrides
-  logo: assets/voxelkit_github_banner.svg
-  favicon: assets/voxelkit_github_banner.svg
   palette:
     - scheme: default
       primary: teal

@@ -1,11 +1,10 @@
 <div align="center">
 
-<img src="assets/voxelkit_github_banner.svg" alt="VoxelKit" width="600"/>
+# VoxelKit
 
 ### Inspect. Preview. QA-check. One toolkit, every format.
 
 [![PyPI](https://img.shields.io/pypi/v/voxelkit?style=flat-square&color=00c4b4&logo=pypi&logoColor=white)](https://pypi.org/project/voxelkit/)
-[![Downloads](https://static.pepy.tech/badge/voxelkit?style=flat-square)](https://pepy.tech/projects/voxelkit)
 [![Stars](https://img.shields.io/github/stars/ArsalaanAhmad/VoxelKit?style=flat-square&color=ffd700&logo=github)](https://github.com/ArsalaanAhmad/VoxelKit/stargazers)
 [![Python](https://img.shields.io/pypi/pyversions/voxelkit?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/voxelkit/)
 [![License: MIT](https://img.shields.io/github/license/ArsalaanAhmad/VoxelKit?style=flat-square&color=00c4b4)](LICENSE)
