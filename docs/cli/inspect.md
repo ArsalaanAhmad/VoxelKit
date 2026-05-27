@@ -22,7 +22,13 @@ voxelkit inspect FILE
 
 | Argument | Description |
 |---|---|
-| `FILE` | Path to any supported file (`.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, `.tiff`) |
+| `FILE` | Path to any supported file (`.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, `.tiff`, `.dcm`) or a directory of `.dcm` slices (a DICOM series) |
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--phi` | DICOM only. Include patient-identifying fields in the output. Prints a stderr warning when set — treat the result as PHI. |
 
 ---
 
@@ -40,6 +46,15 @@ voxelkit inspect features.npy
 
 # TIFF
 voxelkit inspect volume.tiff
+
+# DICOM — single slice
+voxelkit inspect scan.dcm
+
+# DICOM — series directory (folder of .dcm slices forming a 3-D volume)
+voxelkit inspect ./series/
+
+# DICOM with PHI included (warns on stderr)
+voxelkit inspect scan.dcm --phi
 ```
 
 Example output for a NIfTI file:

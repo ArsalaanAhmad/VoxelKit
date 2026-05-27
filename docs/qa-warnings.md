@@ -8,6 +8,9 @@ Whenever `report_file`, `report_batch`, or `voxelkit report` runs, it checks for
 
 Here's what each warning means and what you should do when you see it.
 
+!!! note "DICOM and PHI"
+    `report_*` only ever reads pixel data — PHI is never carried into a report's output. `inspect_dicom` / `voxelkit inspect *.dcm` also strip PHI by default. To include patient identifiers in `inspect` output, pass `include_phi=True` (Python) or `--phi` (CLI). The CLI prints a stderr warning when that flag is set.
+
 ---
 
 ## Array is constant or nearly constant

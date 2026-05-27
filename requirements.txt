@@ -3,4 +3,6 @@ uvicorn
 nibabel
 h5py
 Pillow
+pydicom
 python-multipart
+tifffile

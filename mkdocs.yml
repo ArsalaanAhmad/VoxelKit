@@ -13,6 +13,7 @@ nav:
     - preview_file: library/preview.md
     - report_file: library/report.md
     - report_batch: library/batch.md
+    - DICOM: library/dicom.md
     - Embedding Analysis: library/embedding.md
   - CLI Reference:
     - Overview: cli/index.md
@@ -20,6 +21,8 @@ nav:
     - preview: cli/preview.md
     - report: cli/report.md
     - report-batch: cli/batch.md
+    - anonymise: cli/anonymise.md
+    - convert: cli/convert.md
     - embed-report: cli/embed-report.md
     - embed-preview: cli/embed-preview.md
     - gui: cli/gui.md

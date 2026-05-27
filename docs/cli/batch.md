@@ -29,6 +29,7 @@ voxelkit report-batch DIRECTORY [options]
 | Flag | Description |
 |---|---|
 | `--output PATH` | Write the JSON output to a file instead of stdout |
+| `--html PATH` | Write a self-contained HTML report (with thumbnails + warnings) instead of JSON. Mutually exclusive with `--output`. |
 | `--no-recursive` | Only scan the top-level directory, don't descend into subdirectories |
 
 By default, the scan is **recursive** — it finds files in subdirectories too.
@@ -44,9 +45,18 @@ voxelkit report-batch data/study_01/
 # save to a file
 voxelkit report-batch data/study_01/ --output batch_report.json
 
+# render a self-contained HTML report with thumbnails + warnings
+voxelkit report-batch data/study_01/ --html batch_report.html
+
 # top-level only
 voxelkit report-batch data/study_01/ --no-recursive
 ```
+
+---
+
+## HTML report
+
+The `--html` flag produces a single self-contained `.html` file you can email, attach to a ticket, or drop on a colleague's machine — no external CSS, JS, or images. For every successful report it embeds a base64-encoded PNG thumbnail; cards with warnings are highlighted so scanning a large dataset surfaces issues at a glance.
 
 ---
 
@@ -83,4 +93,4 @@ jq '[.[] | select(.warnings | length > 0) | .filename]' batch.json
 ---
 
 !!! tip "Supported extensions"
-    VoxelKit picks up `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, and `.tiff`. Everything else is skipped silently.
+    VoxelKit picks up `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, `.tiff`, and `.dcm`. Everything else is skipped silently. DICOM series directories are not auto-grouped in the batch scan — each `.dcm` file is reported individually. For a whole-series report, point `voxelkit report` at the directory directly.
