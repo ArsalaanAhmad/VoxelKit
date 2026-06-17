@@ -1,4 +1,5 @@
 fastapi
+httpx2
 uvicorn
 nibabel
 h5py
