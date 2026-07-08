@@ -29,7 +29,7 @@ from voxelkit.core.handler import (
     ReportFn as ReportFnProtocol,
     validate_handler_signatures,
 )
-from voxelkit.dicom import anonymise_directory, dicom_to_nifti
+from voxelkit.dicom import anonymise_directory, convert_batch, dicom_to_nifti
 from voxelkit.dicom import inspect as inspect_dicom
 from voxelkit.dicom import preview as preview_dicom
 from voxelkit.dicom import report as report_dicom
@@ -365,8 +365,62 @@ def _supported_extensions_text() -> str:
     return ", ".join(ext for route in FORMAT_ROUTES for ext in route.extensions)
 
 
+def _render_text(result: dict[str, Any]) -> str:
+    """Render a result dict as a human-readable two-column table.
+
+    Handles the common flat key/value case plus three structured fields
+    that appear in inspect results: `items` (HDF5 hierarchy), `arrays`
+    (NPZ array list), and `warnings` (QA warning list).
+    """
+    col = max((len(k) for k in result), default=10)
+
+    lines: list[str] = []
+    for key, value in result.items():
+        if key == "items":
+            lines.append(f"{'items':<{col}}  {len(value)} node(s)")
+            for item in value:
+                kind = item.get("type", "?")
+                path = item.get("path", "?")
+                if kind == "dataset":
+                    shape = " x ".join(str(d) for d in item.get("shape", []))
+                    dtype = item.get("dtype", "?")
+                    lines.append(f"  {'':>{col}}  [{kind}]  {path}  {shape}  {dtype}")
+                else:
+                    lines.append(f"  {'':>{col}}  [{kind}]  {path}")
+        elif key == "arrays":
+            lines.append(f"{'arrays':<{col}}  {len(value)} array(s)")
+            for arr in value:
+                shape = " x ".join(str(d) for d in arr.get("shape", []))
+                lines.append(
+                    f"  {'':>{col}}  {arr.get('name', '?')}  {shape}  {arr.get('dtype', '?')}"
+                )
+        elif key == "warnings":
+            if value:
+                lines.append(f"{'warnings':<{col}}  {len(value)} warning(s)")
+                for w in value:
+                    lines.append(f"  {'':>{col}}  ! {w}")
+            else:
+                lines.append(f"{'warnings':<{col}}  none")
+        elif key == "shape":
+            display = " x ".join(str(d) for d in value) if value else "scalar"
+            lines.append(f"{key:<{col}}  {display}")
+        elif key == "voxel_size":
+            display = " x ".join(f"{v:.4g}" for v in value)
+            lines.append(f"{key:<{col}}  {display} mm")
+        elif isinstance(value, float):
+            lines.append(f"{key:<{col}}  {value:.6g}")
+        elif isinstance(value, list):
+            lines.append(f"{key:<{col}}  {', '.join(str(v) for v in value)}")
+        elif value is None:
+            lines.append(f"{key:<{col}}  —")
+        else:
+            lines.append(f"{key:<{col}}  {value}")
+
+    return "\n".join(lines)
+
+
 def _handle_inspect(args: argparse.Namespace) -> None:
-    """Handle the inspect command and print JSON.
+    """Handle the inspect command and print JSON or a text table.
 
     `--phi` only has effect for DICOM input; passing it with any other
     format raises a ValidationError so the user does not silently believe
@@ -382,7 +436,10 @@ def _handle_inspect(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
     result = route.inspect_fn(args.file, args)
-    print(json.dumps(result, indent=2))
+    if getattr(args, "format", "json") == "text":
+        print(_render_text(result))
+    else:
+        print(json.dumps(result, indent=2))
 
 
 def _handle_preview(args: argparse.Namespace) -> None:
@@ -399,10 +456,13 @@ def _handle_preview(args: argparse.Namespace) -> None:
 
 
 def _handle_report(args: argparse.Namespace) -> None:
-    """Handle the report command and print JSON."""
+    """Handle the report command and print JSON or a text table."""
     route = _resolve_route(args.file)
     result = route.report_fn(args.file, args)
-    print(json.dumps(result, indent=2))
+    if getattr(args, "format", "json") == "text":
+        print(_render_text(result))
+    else:
+        print(json.dumps(result, indent=2))
 
 
 def _handle_report_batch(args: argparse.Namespace) -> None:
@@ -468,6 +528,21 @@ def _handle_convert(args: argparse.Namespace) -> None:
     print(f"Wrote NIfTI: {summary['output_path']}", file=sys.stderr)
 
 
+def _handle_convert_batch(args: argparse.Namespace) -> None:
+    """Handle the convert-batch command — batch DICOM -> NIfTI conversion."""
+    result = convert_batch(
+        input_dir=args.directory,
+        output_dir=args.output,
+        recursive=args.recursive,
+    )
+    print(json.dumps(result, indent=2))
+    print(
+        f"Converted {result['successful_conversions']} of {result['total_dicom_inputs']} "
+        f"DICOM sources -> {result['output_dir']}",
+        file=sys.stderr,
+    )
+
+
 def _handle_embed_preview(args: argparse.Namespace) -> None:
     """Handle the embed-preview command and write a heatmap PNG to disk."""
     png_bytes = preview_embedding(
@@ -514,6 +589,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="DICOM only. Include patient-identifying fields in the output. "
              "Prints a stderr warning when set — treat the result as PHI.",
+    )
+    inspect_parser.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format. 'json' (default) prints the raw JSON. "
+             "'text' prints a human-readable table.",
     )
     inspect_parser.set_defaults(func=_handle_inspect)
 
@@ -575,6 +657,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="NumPy NPZ only. Array name inside the archive.",
     )
+    report_parser.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format. 'json' (default) prints the raw JSON. "
+             "'text' prints a human-readable table.",
+    )
     report_parser.set_defaults(func=_handle_report)
 
     report_batch_parser = subparsers.add_parser(
@@ -632,6 +721,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output NIfTI path (.nii or .nii.gz).",
     )
     convert_parser.set_defaults(func=_handle_convert)
+
+    convert_batch_parser = subparsers.add_parser(
+        "convert-batch",
+        help="Convert DICOM files and series directories under a directory to NIfTI volumes.",
+    )
+    convert_batch_parser.add_argument(
+        "directory",
+        help="Directory path to scan for DICOM files.",
+    )
+    convert_batch_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output directory for NIfTI files. Created if needed.",
+    )
+    convert_batch_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Disable recursive directory traversal.",
+    )
+    convert_batch_parser.set_defaults(func=_handle_convert_batch, recursive=True)
 
     embed_report_parser = subparsers.add_parser(
         "embed-report",
