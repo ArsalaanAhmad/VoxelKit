@@ -15,6 +15,7 @@ from voxelkit.core.types import (
     NpzInspectResult,
     TiffInspectResult,
 )
+from voxelkit.dicom import convert_batch
 from voxelkit.dicom import inspect as inspect_dicom
 from voxelkit.dicom import preview as preview_dicom
 from voxelkit.dicom import report as report_dicom
@@ -226,4 +227,5 @@ __all__ = [
     "preview_embedding",
     "report_file",
     "report_batch",
+    "convert_batch",
 ]

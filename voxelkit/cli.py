@@ -29,7 +29,7 @@ from voxelkit.core.handler import (
     ReportFn as ReportFnProtocol,
     validate_handler_signatures,
 )
-from voxelkit.dicom import anonymise_directory, dicom_to_nifti
+from voxelkit.dicom import anonymise_directory, convert_batch, dicom_to_nifti
 from voxelkit.dicom import inspect as inspect_dicom
 from voxelkit.dicom import preview as preview_dicom
 from voxelkit.dicom import report as report_dicom
@@ -468,6 +468,21 @@ def _handle_convert(args: argparse.Namespace) -> None:
     print(f"Wrote NIfTI: {summary['output_path']}", file=sys.stderr)
 
 
+def _handle_convert_batch(args: argparse.Namespace) -> None:
+    """Handle the convert-batch command — batch DICOM -> NIfTI conversion."""
+    result = convert_batch(
+        input_dir=args.directory,
+        output_dir=args.output,
+        recursive=args.recursive,
+    )
+    print(json.dumps(result, indent=2))
+    print(
+        f"Converted {result['successful_conversions']} of {result['total_dicom_inputs']} "
+        f"DICOM sources -> {result['output_dir']}",
+        file=sys.stderr,
+    )
+
+
 def _handle_embed_preview(args: argparse.Namespace) -> None:
     """Handle the embed-preview command and write a heatmap PNG to disk."""
     png_bytes = preview_embedding(
@@ -632,6 +647,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output NIfTI path (.nii or .nii.gz).",
     )
     convert_parser.set_defaults(func=_handle_convert)
+
+    convert_batch_parser = subparsers.add_parser(
+        "convert-batch",
+        help="Convert DICOM files and series directories under a directory to NIfTI volumes.",
+    )
+    convert_batch_parser.add_argument(
+        "directory",
+        help="Directory path to scan for DICOM files.",
+    )
+    convert_batch_parser.add_argument(
+        "--output",
+        required=True,
+        help="Output directory for NIfTI files. Created if needed.",
+    )
+    convert_batch_parser.add_argument(
+        "--no-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Disable recursive directory traversal.",
+    )
+    convert_batch_parser.set_defaults(func=_handle_convert_batch, recursive=True)
 
     embed_report_parser = subparsers.add_parser(
         "embed-report",
