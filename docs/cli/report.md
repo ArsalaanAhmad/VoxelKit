@@ -30,6 +30,7 @@ voxelkit report FILE [options]
 |---|---|---|
 | `--dataset PATH` | HDF5 only | Dataset path inside the file. If omitted, the first dataset is used |
 | `--array NAME` | `.npz` only | Array name inside the archive |
+| `--format {json,text}` | all | Output format. `json` (default) prints the raw JSON. `text` prints a human-readable table. |
 
 ---
 
@@ -80,6 +81,30 @@ voxelkit report subject02.nii.gz | jq '.warnings'
 ```
 
 See [QA Warnings](../qa-warnings.md) for what each warning means and what to do about it.
+
+---
+
+## Text output
+
+```bash
+voxelkit report bold.nii.gz --format text
+```
+
+```
+filename      bold.nii.gz
+format        nifti
+shape         64 x 64 x 30 x 200
+ndim          4
+dtype         float32
+min           -2.1
+max           4102.8
+mean          810.5
+std           398.2
+nan_count     0
+inf_count     0
+zero_fraction 3.0%
+warnings      none
+```
 
 ---
 

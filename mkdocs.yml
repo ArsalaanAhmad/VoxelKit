@@ -23,6 +23,7 @@ nav:
     - report-batch: cli/batch.md
     - anonymise: cli/anonymise.md
     - convert: cli/convert.md
+    - convert-batch: cli/convert-batch.md
     - embed-report: cli/embed-report.md
     - embed-preview: cli/embed-preview.md
     - gui: cli/gui.md

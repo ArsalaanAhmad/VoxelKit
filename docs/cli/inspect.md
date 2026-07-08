@@ -29,6 +29,7 @@ voxelkit inspect FILE
 | Flag | Description |
 |---|---|
 | `--phi` | DICOM only. Include patient-identifying fields in the output. Prints a stderr warning when set — treat the result as PHI. |
+| `--format {json,text}` | Output format. `json` (default) prints the raw JSON. `text` prints a human-readable table. |
 
 ---
 
@@ -55,6 +56,19 @@ voxelkit inspect ./series/
 
 # DICOM with PHI included (warns on stderr)
 voxelkit inspect scan.dcm --phi
+
+# Human-readable table instead of JSON
+voxelkit inspect scan.nii.gz --format text
+```
+
+Example `--format text` output for a NIfTI file:
+
+```
+filename  scan.nii.gz
+shape     64 x 64 x 30
+ndim      3
+voxel_size  3.0 x 3.0 x 4.0 mm
+dtype     float32
 ```
 
 Example output for a NIfTI file:
