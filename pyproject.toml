@@ -26,6 +26,9 @@ dependencies = [
 gui = [
   "streamlit",
 ]
+geo = [
+  "rasterio",
+]
 
 [project.scripts]
 voxelkit = "voxelkit.cli:main"

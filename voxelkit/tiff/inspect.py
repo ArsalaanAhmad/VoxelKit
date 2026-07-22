@@ -2,21 +2,52 @@
 
 Uses `tifffile.TiffFile` for lazy metadata access — only the file header and
 IFD (Image File Directory) entries are read; pixel data is never loaded here.
+
+When `rasterio` is installed (via `pip install voxelkit[geo]`), GeoTIFF files
+are automatically detected and geo fields (crs, bounds, resolution, band_count)
+are added to the result. Files without a CRS are returned as plain TIFFs.
 """
 
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import tifffile
 
 from voxelkit.core.errors import ValidationError
 from voxelkit.core.formats import TIFF_EXTENSIONS
-from voxelkit.core.types import TiffInspectResult
+from voxelkit.core.types import GeoTiffInspectResult, TiffInspectResult
 from voxelkit.core.validation import require_supported_extension
 
 
-def inspect(file_path: str) -> TiffInspectResult:
+def _try_read_geo_metadata(file_path: str) -> dict[str, Any]:
+    """Return geo metadata dict if rasterio is available and the file has a CRS.
+
+    Returns an empty dict when rasterio is not installed or the file carries
+    no coordinate reference system — so the caller can always do `{**result,
+    **geo}` safely.
+    """
+    try:
+        import rasterio  # type: ignore[import-untyped]
+    except ModuleNotFoundError:
+        return {}
+
+    try:
+        with rasterio.open(file_path) as ds:
+            if ds.crs is None:
+                return {}
+            return {
+                "crs": ds.crs.to_string(),
+                "bounds": list(ds.bounds),
+                "resolution": list(ds.res),
+                "band_count": ds.count,
+            }
+    except Exception:  # noqa: BLE001 — geo enrichment must never break plain TIFF inspection
+        return {}
+
+
+def inspect(file_path: str) -> TiffInspectResult | GeoTiffInspectResult:
     """Inspect a TIFF file and return metadata without loading pixel data.
 
     Opens the file with `tifffile.TiffFile` and reads only the first image
@@ -24,12 +55,14 @@ def inspect(file_path: str) -> TiffInspectResult:
     dataset (e.g. a Z-stack or an RGB image). Most scientific TIFFs have
     exactly one series.
 
+    When `rasterio` is installed and the file carries a CRS, the result is
+    extended with geo fields: `crs`, `bounds`, `resolution`, `band_count`.
+
     Args:
         file_path: Path to a .tif or .tiff file.
 
     Returns:
-        TiffInspectResult with filename, shape, ndim, dtype, page_count, and
-        axes string (e.g. "ZYX", "YX", "YXS").
+        TiffInspectResult (or GeoTiffInspectResult when geo metadata is found).
 
     Raises:
         ValidationError: If the extension is unsupported or the file cannot
@@ -43,17 +76,13 @@ def inspect(file_path: str) -> TiffInspectResult:
 
     try:
         with tifffile.TiffFile(file_path) as tif:
-            # series[0] covers the primary image; every compliant TIFF has at
-            # least one series. Multi-series files (rare in practice) expose
-            # subsequent series as series[1], series[2], etc. — we report only
-            # the first for simplicity.
             if not tif.series:
                 raise ValidationError("TIFF file contains no image series.")
 
             series = tif.series[0]
             shape = list(series.shape)
             dtype = str(series.dtype)
-            axes = series.axes     # tifffile dimension labels, e.g. "ZYX"
+            axes = series.axes
             page_count = len(tif.pages)
 
     except tifffile.TiffFileError as exc:
@@ -61,7 +90,7 @@ def inspect(file_path: str) -> TiffInspectResult:
     except (OSError, ValueError) as exc:
         raise ValidationError("Could not open TIFF file.") from exc
 
-    return {
+    result: dict[str, Any] = {
         "filename": os.path.basename(file_path),
         "format": "tiff",
         "shape": shape,
@@ -70,3 +99,10 @@ def inspect(file_path: str) -> TiffInspectResult:
         "page_count": page_count,
         "axes": axes,
     }
+
+    geo = _try_read_geo_metadata(file_path)
+    if geo:
+        result["is_geotiff"] = True
+        result.update(geo)
+
+    return result  # type: ignore[return-value]

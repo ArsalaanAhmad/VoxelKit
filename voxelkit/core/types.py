@@ -60,6 +60,24 @@ class TiffInspectResult(TypedDict):
     axes: str
 
 
+class GeoTiffInspectResult(TiffInspectResult, total=False):
+    """Extended inspect result for GeoTIFF files when rasterio is installed.
+
+    All base `TiffInspectResult` fields are always present. The geo fields
+    below are added only when rasterio is available and the file carries
+    a coordinate reference system. `crs` is the EPSG string (e.g. "EPSG:4326"),
+    `bounds` is (left, bottom, right, top) in the CRS unit, `resolution` is
+    (x_res, y_res) in the CRS unit per pixel, and `band_count` is the number
+    of raster bands.
+    """
+
+    is_geotiff: bool
+    crs: str
+    bounds: list[float]
+    resolution: list[float]
+    band_count: int
+
+
 class GroupInspectItem(TypedDict):
     """A single HDF5 group entry returned within `H5InspectResult.items`."""
 
