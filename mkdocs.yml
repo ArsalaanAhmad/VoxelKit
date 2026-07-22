@@ -24,6 +24,8 @@ nav:
     - anonymise: cli/anonymise.md
     - convert: cli/convert.md
     - convert-batch: cli/convert-batch.md
+    - compare: cli/compare.md
+    - GeoTIFF: cli/geotiff.md
     - embed-report: cli/embed-report.md
     - embed-preview: cli/embed-preview.md
     - gui: cli/gui.md

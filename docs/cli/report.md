@@ -30,7 +30,12 @@ voxelkit report FILE [options]
 |---|---|---|
 | `--dataset PATH` | HDF5 only | Dataset path inside the file. If omitted, the first dataset is used |
 | `--array NAME` | `.npz` only | Array name inside the archive |
-| `--format {json,text}` | all | Output format. `json` (default) prints the raw JSON. `text` prints a human-readable table. |
+| `--format {json,text}` | all | Output format. `json` (default) or `text` for a human-readable table. Mutually exclusive with `--output`. |
+| `--output PATH` | all | Write JSON to a file instead of stdout. Mutually exclusive with `--format text`. |
+| `--max-nan N` | all | Exit with code 3 if `nan_count` exceeds N |
+| `--max-zero-fraction F` | all | Exit with code 3 if `zero_fraction` exceeds F (0.0–1.0) |
+| `--max-inf N` | all | Exit with code 3 if `inf_count` exceeds N |
+| `--no-warnings` | all | Exit with code 3 if the report contains any QA warnings |
 
 ---
 
@@ -111,5 +116,37 @@ warnings      none
 ## Saving the report
 
 ```bash
+# Redirect stdout
 voxelkit report bold.nii.gz > report.json
+
+# Or use --output
+voxelkit report bold.nii.gz --output report.json
 ```
+
+---
+
+## QA thresholds
+
+Use threshold flags to make `voxelkit report` behave like a CI gate — it exits with code **3** when a constraint is violated, code **0** when everything passes, and code **2** on a hard error.
+
+```bash
+# Fail if any NaNs
+voxelkit report scan.nii.gz --max-nan 0
+
+# Fail if more than 10% zeros
+voxelkit report scan.nii.gz --max-zero-fraction 0.1
+
+# Fail if any QA warnings
+voxelkit report scan.nii.gz --no-warnings
+
+# Combine
+voxelkit report scan.nii.gz --max-nan 0 --max-zero-fraction 0.1 --no-warnings
+```
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| 0 | Report generated, all thresholds passed |
+| 2 | Hard error (file unreadable, unsupported format) |
+| 3 | Threshold violated — report was generated but a constraint failed |

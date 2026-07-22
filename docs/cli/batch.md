@@ -28,8 +28,9 @@ voxelkit report-batch DIRECTORY [options]
 
 | Flag | Description |
 |---|---|
-| `--output PATH` | Write the JSON output to a file instead of stdout |
-| `--html PATH` | Write a self-contained HTML report (with thumbnails + warnings) instead of JSON. Mutually exclusive with `--output`. |
+| `--output PATH` | Write JSON output to a file instead of stdout |
+| `--html PATH` | Write a self-contained HTML report (with thumbnails + warnings). Mutually exclusive with `--output` and `--csv`. |
+| `--csv PATH` | Write a flat CSV (one row per file) to this path. Mutually exclusive with `--output` and `--html`. |
 | `--no-recursive` | Only scan the top-level directory, don't descend into subdirectories |
 
 By default, the scan is **recursive** — it finds files in subdirectories too.
@@ -42,15 +43,36 @@ By default, the scan is **recursive** — it finds files in subdirectories too.
 # print results to stdout
 voxelkit report-batch data/study_01/
 
-# save to a file
+# save JSON to a file
 voxelkit report-batch data/study_01/ --output batch_report.json
 
 # render a self-contained HTML report with thumbnails + warnings
 voxelkit report-batch data/study_01/ --html batch_report.html
 
+# export a flat CSV for pandas / Excel
+voxelkit report-batch data/study_01/ --csv batch_report.csv
+
 # top-level only
 voxelkit report-batch data/study_01/ --no-recursive
 ```
+
+---
+
+## CSV export
+
+The `--csv` flag writes a flat CSV — one row per successfully reported file — that you can load directly into pandas or Excel:
+
+```bash
+voxelkit report-batch data/ --csv batch.csv
+```
+
+```csv
+file_path,filename,format,shape,ndim,dtype,min,max,mean,std,nan_count,inf_count,zero_fraction,warnings
+/data/scan_01.nii.gz,scan_01.nii.gz,nifti,64 x 64 x 30,3,float32,-2.1,4102.8,810.5,398.2,0,0,0.03,
+/data/scan_02.nii.gz,scan_02.nii.gz,nifti,64 x 64 x 30,3,float32,0.0,0.0,0.0,0.0,0,0,1.0,Array is constant (all zeros). | Array is mostly zeros.
+```
+
+Multiple warnings are joined with ` | ` so each row stays on one line. Failures (files that could not be opened) are excluded from the CSV.
 
 ---
 
