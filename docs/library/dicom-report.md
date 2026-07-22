@@ -49,7 +49,7 @@ def report_dicom(file_path: str | Path) -> FileReportResult
 }
 ```
 
-See [QA Warnings](../../qa-warnings.md) for what can appear in `warnings`.
+See [QA Warnings](../qa-warnings.md) for what can appear in `warnings`.
 
 ---
 

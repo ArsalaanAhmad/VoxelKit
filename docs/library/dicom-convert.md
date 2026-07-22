@@ -77,4 +77,4 @@ This function handles the common single-series case well. For anything more comp
 - **Diffusion series** with varying gradient directions are assembled the same way. Use `dcm2niix` if you need per-direction bval/bvec files.
 - **Compressed transfer syntaxes** (JPEG, JPEG 2000, RLE) depend on your `pydicom` installation having the correct pixel data handlers available.
 
-See [voxelkit convert (CLI)](../../cli/convert.md) for the equivalent command-line usage.
+See [voxelkit convert (CLI)](../cli/convert.md) for the equivalent command-line usage.
