@@ -31,7 +31,7 @@ def report_file(
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `file_path` | `str` or `Path` | — | Path to a supported file |
+| `file_path` | `str` or `Path` | — | Path to a supported file, or a DICOM series directory |
 | `dataset_path` | `str` or `None` | `None` | **HDF5 only.** Dataset path inside the file. If omitted, the first dataset is used |
 | `array_name` | `str` or `None` | `None` | **NumPy .npz only.** Array name inside the archive |
 
@@ -123,3 +123,39 @@ See [QA Warnings](../qa-warnings.md) for a full list of what can appear in `warn
     report = report_file("volume.tiff")
     print(report["shape"], report["dtype"])
     ```
+
+=== "DICOM"
+    ```python
+    from voxelkit import report_file
+
+    # Single file
+    report = report_file("scan.dcm")
+    print(report["shape"])    # [512, 512]
+    print(report["warnings"]) # []
+
+    # Series directory
+    report = report_file("./series/")
+    print(report["shape"])  # [128, 512, 512]
+    ```
+
+    PHI is never present in the report output, regardless of what the DICOM headers contain. See [report_dicom](dicom-report.md) for more detail.
+
+---
+
+## Using report_file as a QA gate
+
+The library always returns a result dict. If you want threshold behaviour in Python code, check the fields yourself rather than relying on the CLI flags:
+
+```python
+from voxelkit import report_file
+
+report = report_file("scan.nii.gz")
+
+if report["nan_count"] > 0:
+    raise ValueError(f"NaN check failed: {report['nan_count']} NaNs detected")
+
+if report["warnings"]:
+    raise ValueError(f"QA warnings: {', '.join(report['warnings'])}")
+```
+
+The CLI's `--max-nan`, `--max-zero-fraction`, and `--no-warnings` flags are wrappers around exactly this pattern. See [report threshold flags](../cli/report.md#qa-thresholds) if you need them in a shell script rather than Python.

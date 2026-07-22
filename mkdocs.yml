@@ -13,8 +13,17 @@ nav:
     - preview_file: library/preview.md
     - report_file: library/report.md
     - report_batch: library/batch.md
-    - DICOM: library/dicom.md
+    - DICOM:
+      - Overview: library/dicom.md
+      - inspect_dicom: library/dicom-inspect.md
+      - preview_dicom: library/dicom-preview.md
+      - report_dicom: library/dicom-report.md
+      - anonymise_directory: library/dicom-anonymise.md
+      - dicom_to_nifti: library/dicom-convert.md
+    - GeoTIFF: library/geotiff.md
     - Embedding Analysis: library/embedding.md
+    - Errors: library/errors.md
+    - Concepts: library/concepts.md
   - CLI Reference:
     - Overview: cli/index.md
     - inspect: cli/inspect.md

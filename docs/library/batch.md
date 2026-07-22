@@ -95,5 +95,36 @@ results = report_batch("data/study_01/", recursive=False)
 
 ---
 
+## DICOM in batch scans
+
+`report_batch` picks up `.dcm` files and reports on each one individually. Series directories (a folder of per-slice DICOM files) are not auto-grouped in batch mode. If you need a whole-series report, call `report_file` on the series directory directly instead.
+
+```python
+from voxelkit import report_file
+
+# Report a full series as a single 3D volume
+report = report_file("./dicom_series/")
+```
+
+---
+
+## CSV and HTML output
+
+`report_batch` returns a plain Python list. CSV and HTML exports are features of the CLI's `report-batch --csv` and `report-batch --html` commands, not of this library function. If you need tabular output in Python, pandas makes it straightforward:
+
+```python
+import pandas as pd
+from voxelkit import report_batch
+
+results = report_batch("data/")
+
+# Filter to successful reports (no error key)
+rows = [r for r in results if "error" not in r]
+df = pd.DataFrame(rows)
+df.to_csv("batch_report.csv", index=False)
+```
+
+---
+
 !!! tip "What counts as a supported file?"
-    VoxelKit scans for `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, and `.tiff` files. Other files in the directory are silently skipped.
+    VoxelKit scans for `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, `.tiff`, and `.dcm` files. Other files in the directory are silently skipped.

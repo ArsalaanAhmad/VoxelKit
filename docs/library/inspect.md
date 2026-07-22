@@ -17,14 +17,19 @@ Point it at any supported file and you get back a dictionary with the structural
 ## Signature
 
 ```python
-def inspect_file(file_path: str | Path) -> dict
+def inspect_file(
+    file_path: str | Path,
+    *,
+    include_phi: bool = False,
+) -> dict
 ```
 
 ## Parameters
 
-| Parameter | Type | Required | Description |
+| Parameter | Type | Default | Description |
 |---|---|---|---|
-| `file_path` | `str` or `Path` | Yes | Path to a `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, or `.tiff` file |
+| `file_path` | `str` or `Path` | required | Path to a `.nii`, `.nii.gz`, `.h5`, `.hdf5`, `.npy`, `.npz`, `.tif`, `.tiff`, or `.dcm` file. Can also be a directory containing DICOM slices. |
+| `include_phi` | `bool` | `False` | DICOM only. When `True`, patient identifiers are included in the result. No effect on any other format. |
 
 ---
 
@@ -94,6 +99,38 @@ The shape of the returned dictionary depends on the file format.
       "axes": "ZYX"
     }
     ```
+
+=== "DICOM"
+    ```json
+    {
+      "filename": "scan.dcm",
+      "format": "dicom",
+      "source": "file",
+      "shape": [512, 512],
+      "ndim": 2,
+      "dtype": "uint16",
+      "slice_count": 1,
+      "modality": "CT",
+      "voxel_size": [0.7, 0.7, 1.0]
+    }
+    ```
+
+    For a series directory the `source` field is `"series"` and `shape` becomes three-dimensional:
+
+    ```json
+    {
+      "filename": "series",
+      "format": "dicom",
+      "source": "series",
+      "shape": [128, 512, 512],
+      "ndim": 3,
+      "slice_count": 128,
+      "modality": "MR",
+      "voxel_size": [1.0, 1.0, 1.2]
+    }
+    ```
+
+    See [inspect_dicom](dicom-inspect.md) for full DICOM details including PHI fields.
 
 ---
 
