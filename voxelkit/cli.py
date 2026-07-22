@@ -14,7 +14,7 @@ from typing import Any
 import h5py
 
 from voxelkit import report_batch as report_batch_library
-from voxelkit.core.errors import ValidationError
+from voxelkit.core.errors import ThresholdViolationError, ValidationError
 from voxelkit.core.formats import (
     DICOM_EXTENSIONS,
     HDF5_EXTENSIONS,
@@ -455,25 +455,104 @@ def _handle_preview(args: argparse.Namespace) -> None:
     print(f"Wrote preview PNG: {output_path}")
 
 
+def _check_thresholds(result: dict[str, Any], args: argparse.Namespace) -> None:
+    """Raise ThresholdViolationError if any user-defined QA threshold is breached.
+
+    Violations are collected and reported together so the user sees every
+    problem in one run rather than fixing them one at a time.
+    """
+    violations: list[str] = []
+
+    max_nan = getattr(args, "max_nan", None)
+    if max_nan is not None and result.get("nan_count", 0) > max_nan:
+        violations.append(f"nan_count {result['nan_count']} exceeds --max-nan {max_nan}")
+
+    max_zero = getattr(args, "max_zero_fraction", None)
+    if max_zero is not None:
+        zero_frac = result.get("zero_fraction", 0.0) or 0.0
+        if zero_frac > max_zero:
+            violations.append(
+                f"zero_fraction {zero_frac:.4f} exceeds --max-zero-fraction {max_zero}"
+            )
+
+    max_inf = getattr(args, "max_inf", None)
+    if max_inf is not None and result.get("inf_count", 0) > max_inf:
+        violations.append(f"inf_count {result['inf_count']} exceeds --max-inf {max_inf}")
+
+    if getattr(args, "no_warnings", False) and result.get("warnings"):
+        violations.append(f"file has {len(result['warnings'])} QA warning(s): {'; '.join(result['warnings'])}")
+
+    if violations:
+        raise ThresholdViolationError("\n".join(f"  ! {v}" for v in violations))
+
+
 def _handle_report(args: argparse.Namespace) -> None:
-    """Handle the report command and print JSON or a text table."""
+    """Handle the report command and print JSON or a text table.
+
+    When `--output` is given the result is written to a file instead of
+    stdout. `--output` and `--format text` are mutually exclusive.
+    Threshold flags (`--max-nan`, `--max-zero-fraction`, `--max-inf`,
+    `--no-warnings`) cause a non-zero exit (code 3) when violated.
+    """
+    if getattr(args, "output", None) is not None and getattr(args, "format", "json") == "text":
+        raise ValidationError("--output and --format text are mutually exclusive.")
+
     route = _resolve_route(args.file)
     result = route.report_fn(args.file, args)
+
     if getattr(args, "format", "json") == "text":
         print(_render_text(result))
     else:
-        print(json.dumps(result, indent=2))
+        rendered = json.dumps(result, indent=2)
+        if getattr(args, "output", None) is not None:
+            output_path = Path(args.output)
+            if output_path.parent and not output_path.parent.exists():
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(rendered, encoding="utf-8")
+            print(f"Wrote report JSON: {output_path}")
+        else:
+            print(rendered)
+
+    _check_thresholds(result, args)
+
+
+def _render_batch_csv(batch_result: dict[str, Any]) -> str:
+    """Render a BatchReportResult as a flat CSV string.
+
+    One row per file. Warnings are joined with a pipe character so the
+    cell stays parseable without nested quoting.
+    """
+    import csv
+    import io
+
+    fieldnames = [
+        "file_path", "filename", "format", "shape", "ndim", "dtype",
+        "min", "max", "mean", "std", "nan_count", "inf_count",
+        "zero_fraction", "warnings",
+    ]
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction="ignore", lineterminator="\n")
+    writer.writeheader()
+    for record in batch_result.get("files", []):
+        row = dict(record)
+        shape = row.get("shape") or []
+        row["shape"] = " x ".join(str(d) for d in shape) if shape else "scalar"
+        row["warnings"] = " | ".join(row.get("warnings") or [])
+        writer.writerow(row)
+    return buf.getvalue()
 
 
 def _handle_report_batch(args: argparse.Namespace) -> None:
-    """Handle the report-batch command and emit JSON or self-contained HTML.
+    """Handle the report-batch command and emit JSON, HTML, or CSV.
 
     Default: JSON to stdout. `--output FILE` writes JSON to a file.
-    `--html FILE` writes a self-contained HTML report (with thumbnails) to
-    a file. `--output` and `--html` are mutually exclusive.
+    `--html FILE` writes a self-contained HTML report (with thumbnails).
+    `--csv FILE` writes a flat CSV one row per file.
+    All three output flags are mutually exclusive.
     """
-    if args.output is not None and args.html is not None:
-        raise ValidationError("--output (JSON) and --html are mutually exclusive.")
+    active_outputs = sum(x is not None for x in [args.output, args.html, getattr(args, "csv", None)])
+    if active_outputs > 1:
+        raise ValidationError("--output, --html, and --csv are mutually exclusive.")
 
     result = report_batch_library(path=args.directory, recursive=args.recursive)
 
@@ -487,6 +566,14 @@ def _handle_report_batch(args: argparse.Namespace) -> None:
         print(f"Wrote batch report HTML: {html_path}")
         return
 
+    if getattr(args, "csv", None) is not None:
+        csv_path = Path(args.csv)
+        if csv_path.parent and not csv_path.parent.exists():
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path.write_text(_render_batch_csv(result), encoding="utf-8")
+        print(f"Wrote batch report CSV: {csv_path}")
+        return
+
     rendered_json = json.dumps(result, indent=2)
     if args.output is None:
         print(rendered_json)
@@ -497,6 +584,64 @@ def _handle_report_batch(args: argparse.Namespace) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_json, encoding="utf-8")
     print(f"Wrote batch report JSON: {output_path}")
+
+
+def _compare_reports(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    """Diff two report dicts and return a structured comparison result."""
+    numeric_keys = ("min", "max", "mean", "std", "nan_count", "inf_count", "zero_fraction")
+    stats: dict[str, Any] = {}
+    for key in numeric_keys:
+        va, vb = a.get(key), b.get(key)
+        if va is not None and vb is not None:
+            stats[key] = {"a": va, "b": vb, "delta": round(vb - va, 8)}
+        else:
+            stats[key] = {"a": va, "b": vb, "delta": None}
+
+    return {
+        "file_a": a.get("filename", "?"),
+        "file_b": b.get("filename", "?"),
+        "shape_match": a.get("shape") == b.get("shape"),
+        "dtype_match": a.get("dtype") == b.get("dtype"),
+        "format_match": a.get("format") == b.get("format"),
+        "shape_a": a.get("shape"),
+        "shape_b": b.get("shape"),
+        "dtype_a": a.get("dtype"),
+        "dtype_b": b.get("dtype"),
+        "stats": stats,
+        "warnings_a": a.get("warnings", []),
+        "warnings_b": b.get("warnings", []),
+    }
+
+
+def _handle_compare(args: argparse.Namespace) -> None:
+    """Handle the compare command — diff QA reports for two files."""
+    route_a = _resolve_route(args.file_a)
+    route_b = _resolve_route(args.file_b)
+    result_a = route_a.report_fn(args.file_a, args)
+    result_b = route_b.report_fn(args.file_b, args)
+    comparison = _compare_reports(result_a, result_b)
+
+    if getattr(args, "format", "json") == "text":
+        def _tick(ok: bool) -> str:
+            return "✓" if ok else "✗"
+
+        lines: list[str] = []
+        lines.append(f"file_a       {comparison['file_a']}")
+        lines.append(f"file_b       {comparison['file_b']}")
+        lines.append(f"shape        {_tick(comparison['shape_match'])}  {comparison['shape_a']}  vs  {comparison['shape_b']}")
+        lines.append(f"dtype        {_tick(comparison['dtype_match'])}  {comparison['dtype_a']}  vs  {comparison['dtype_b']}")
+        lines.append(f"format       {_tick(comparison['format_match'])}")
+        lines.append("")
+        lines.append(f"{'stat':<16}  {'file_a':>12}  {'file_b':>12}  {'delta':>12}")
+        lines.append("-" * 56)
+        for key, vals in comparison["stats"].items():
+            va = f"{vals['a']:.6g}" if vals["a"] is not None else "—"
+            vb = f"{vals['b']:.6g}" if vals["b"] is not None else "—"
+            delta = f"{vals['delta']:.6g}" if vals["delta"] is not None else "—"
+            lines.append(f"{key:<16}  {va:>12}  {vb:>12}  {delta:>12}")
+        print("\n".join(lines))
+    else:
+        print(json.dumps(comparison, indent=2))
 
 
 def _handle_embed_report(args: argparse.Namespace) -> None:
@@ -664,6 +809,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format. 'json' (default) prints the raw JSON. "
              "'text' prints a human-readable table.",
     )
+    report_parser.add_argument(
+        "--output",
+        default=None,
+        help="Write JSON output to a file instead of stdout. "
+             "Mutually exclusive with --format text.",
+    )
+    report_parser.add_argument(
+        "--max-nan",
+        dest="max_nan",
+        type=int,
+        default=None,
+        help="Exit with code 3 if nan_count exceeds this value.",
+    )
+    report_parser.add_argument(
+        "--max-zero-fraction",
+        dest="max_zero_fraction",
+        type=float,
+        default=None,
+        help="Exit with code 3 if zero_fraction exceeds this value (0.0–1.0).",
+    )
+    report_parser.add_argument(
+        "--max-inf",
+        dest="max_inf",
+        type=int,
+        default=None,
+        help="Exit with code 3 if inf_count exceeds this value.",
+    )
+    report_parser.add_argument(
+        "--no-warnings",
+        dest="no_warnings",
+        action="store_true",
+        help="Exit with code 3 if the report contains any QA warnings.",
+    )
     report_parser.set_defaults(func=_handle_report)
 
     report_batch_parser = subparsers.add_parser(
@@ -686,7 +864,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--html",
         default=None,
         help="Write a self-contained HTML report (with thumbnails) to this path. "
-             "Mutually exclusive with --output.",
+             "Mutually exclusive with --output and --csv.",
+    )
+    report_batch_parser.add_argument(
+        "--csv",
+        default=None,
+        help="Write a flat CSV (one row per file) to this path. "
+             "Mutually exclusive with --output and --html.",
     )
     report_batch_parser.set_defaults(func=_handle_report_batch, recursive=True)
 
@@ -743,6 +927,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     convert_batch_parser.set_defaults(func=_handle_convert_batch, recursive=True)
 
+    compare_parser = subparsers.add_parser(
+        "compare",
+        help="Diff QA reports for two files — shape, dtype, and stat deltas.",
+    )
+    compare_parser.add_argument("file_a", help="First file path.")
+    compare_parser.add_argument("file_b", help="Second file path.")
+    compare_parser.add_argument(
+        "--dataset",
+        default=None,
+        help="HDF5 only. Dataset path applied to both files.",
+    )
+    compare_parser.add_argument(
+        "--array",
+        dest="array_name",
+        default=None,
+        help="NumPy NPZ only. Array name applied to both files.",
+    )
+    compare_parser.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output format. 'json' (default) or 'text' for a human-readable table.",
+    )
+    compare_parser.set_defaults(func=_handle_compare)
+
     embed_report_parser = subparsers.add_parser(
         "embed-report",
         help="Generate an embedding-aware QA report for a .npy feature matrix.",
@@ -796,6 +1005,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args.func(args)
         return 0
+    except ThresholdViolationError as exc:
+        print(f"Threshold violated:\n{exc}", file=sys.stderr)
+        return 3
     except (ValidationError, FileNotFoundError, ValueError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
